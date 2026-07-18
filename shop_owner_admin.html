@@ -1,0 +1,2022 @@
+<!-- shop_owner_admin.html -->
+<!DOCTYPE html>
+<html lang="he" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>rumyah-and-tamar.com</title>
+
+	<style>
+
+        *
+        {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body
+        {
+            margin: 0;
+            padding: 15px;
+            background: #f5f5f5;
+            color: #222;
+        }
+
+        .container
+        {
+            max-width: 500px;
+            margin: auto;
+        }
+
+        .logo
+        {
+            display: block;
+            width: 100%;
+            margin: 0 auto 15px auto;
+        }
+
+        .form-card
+        {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-card-title
+        {
+            font-size: 17px;
+            font-weight: bold;
+            color: #1d7c45;
+            margin-bottom: 16px;
+            font-family: monospace, Arial, sans-serif;
+            direction: ltr;
+        }
+
+        .form-group
+        {
+            margin-bottom: 18px;
+            text-align: center;
+        }
+
+        label
+        {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        input,
+        select,
+        textarea
+        {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            background: white;
+            text-align: center;
+        }
+
+        textarea
+        {
+            resize: vertical;
+            min-height: 90px;
+            text-align: right;
+        }
+
+        input:disabled
+        {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .main-button
+        {
+            width: 100%;
+            height: 52px;
+            border: none;
+            border-radius: 14px;
+            background: #1d7c45;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .secondary-button
+        {
+            width: 100%;
+            height: 44px;
+            border: none;
+            border-radius: 14px;
+            background: #eee;
+            color: #222;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+		#g_loading_overlay
+		{
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.5);
+			z-index: 1200;
+			justify-content: center;
+			align-items: flex-start;
+		}
+
+		#g_loading_overlay .loading-box
+		{
+			background: white;
+			border-radius: 16px;
+			padding: 30px 40px;
+			font-size: 20px;
+			font-weight: bold;
+			color: #1d7c45;
+			margin-top: 20px;
+		}
+
+		.page-title
+		{
+			text-align: center;
+			font-size: 22px;
+			font-weight: bold;
+			margin: 10px 0 18px 0;
+			color: #222;
+		}
+
+		.section-divider
+		{
+			border: none;
+			border-top: 1px solid #ddd;
+			margin: 30px 0;
+		}
+
+	</style>
+	
+	<script>
+	
+	// shop_owner_admin.html?password=XXXXX
+	
+	var g_server_url = "";
+	var g_secret_phrase = "";
+	var g_pickup_points_data = "";
+	var g_coupons_data = "";
+
+	
+
+	function get_server_url()
+	{
+		try
+		{
+			console.log("get_server_url()");
+
+			const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a cached version
+			const xhr = new XMLHttpRequest();
+			xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			xhr.send(null);
+
+			if (xhr.status >= 200 && xhr.status < 300)
+			{
+				console.log("URL: " + xhr.responseText.trim());
+				return xhr.responseText.trim();
+			}
+			else
+			{
+				console.log("ERROR: get_server_url() failed: HTTP status " + xhr.status);
+				return "";
+			}
+		}
+		catch (error)
+		{
+			console.log("ERROR: get_server_url() failed: catch " + error);
+			return "";
+		}
+	}
+
+	
+	function get_url_param(param_name)
+	{
+		try
+		{
+			console.log("get_url_param() " + param_name);
+
+			const url_params = new URLSearchParams(window.location.search);
+			const value = url_params.get(param_name);
+
+			if (value === null)
+			{
+				console.log("ERROR: get_url_param() param '" + param_name + "' not found in url");
+				return "";
+			}
+
+			return value;
+		}
+		catch (err)
+		{
+			console.log("ERROR: get_url_param() catch error:" + err.toString());
+			return "";
+		}
+	}
+	
+	
+	function showOverlay(overlay_text)
+	{
+		document.getElementById('g_overlay_text').innerText = overlay_text;
+		document.getElementById('g_loading_overlay').style.display = 'flex';
+	}
+
+
+	function hideOverlay()
+	{
+		document.getElementById('g_loading_overlay').style.display = 'none';
+	}
+
+
+	function on_click_toggle_password_visibility()
+	{
+		try
+		{
+			console.log("on_click_toggle_password_visibility()");
+
+			const password_input = document.getElementById('g_password_input');
+			const toggle_button = document.getElementById('g_toggle_password_button');
+
+			if (password_input.type === "password")
+			{
+				password_input.type = "text";
+				toggle_button.innerText = "הסתר סיסמה";
+			}
+			else
+			{
+				password_input.type = "password";
+				toggle_button.innerText = "הצג סיסמה";
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_toggle_password_visibility() catch error:" + err.toString());
+		}
+	}
+	
+
+	async function post_to_server_with_busy_retry(body_object, busy_overlay_text)
+	{
+		// sends a request to the server, if the server responds with "server_is_buisy" it waits 2 seconds (showing busy_overlay_text) and tries again
+		console.log("post_to_server_with_busy_retry() - start" );
+		try
+		{
+			while (true)
+			{
+				const response = await fetch(g_server_url,
+				{
+					method: "POST",
+					headers: { "Content-Type": "text/plain;charset=utf-8" },
+					body: JSON.stringify(body_object),
+					redirect: "follow"
+				});
+
+				const result = await response.json();
+
+				console.log("post_to_server_with_busy_retry() result:" + JSON.stringify(result));
+
+				if (result.result === "server_is_buisy")
+				{
+					showOverlay(busy_overlay_text);
+					await new Promise(resolve => setTimeout(resolve, 2000));
+					continue;
+				}
+				else if(result.result == "server_under_maintenance")
+				{
+					console.log("ERROR: post_to_server_with_busy_retry()  >> server_under_maintenance");
+					return { result: "server_under_maintenance", text: "" };
+				}
+
+				return result;
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: post_to_server_with_busy_retry() catch error:" + err.toString());
+			return { result: "error", text: "" };
+		}
+	}
+	
+
+	async function on_click_send_marketing_sms()
+	{
+		try
+		{
+			console.log("on_click_send_marketing_sms()");
+			
+			if (!confirm("שים לב!  אתה עומד לשלוח הודעה ל כ ל  ה ל ק ו ח ו ת   האם לשלוח?"))
+				return;
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			g_secret_phrase = document.getElementById('g_password_input').value;
+			
+			let text_to_send_input = document.getElementById('g_sms_text_input').value;
+
+			const result = await post_to_server_with_busy_retry({ action: "send_marketing_sms", password: g_secret_phrase, text_to_send: text_to_send_input}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				alert("SUCCESS");
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_send_marketing_sms() catch error:" + err.toString());
+		}
+	}
+
+
+	async function on_click_credit_debit_pickup_point()
+	{
+		try
+		{
+			console.log("on_click_credit_debit_pickup_point()");
+			
+			if (!confirm("שים לב: אתה עומד ל ח י י ב  או ל ז כ ו ת נקודת אספקה ב ס כ ו ם  כ ס פ י , האם לבצע?"))
+				return;
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			g_secret_phrase = document.getElementById('g_password_input').value;
+			
+			let pickup_point_code_input = document.getElementById('g_pickup_point_code_select_3').value;
+			let amount_input = document.getElementById('g_pickup_point_credit_debit_amount_input').value;  
+			let comment_input = document.getElementById('g_pickup_point_credit_debit_comment_input').value;
+
+			const result = await post_to_server_with_busy_retry({ action: "credit_debit_pickup_point", secret_phrase: g_secret_phrase, pickup_point_code: pickup_point_code_input,
+			amount: amount_input, comment: comment_input}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				alert("SUCCESS");
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא בדוק את השינויים בבסיס הנתונים לפני שאתה מנסה שנית!");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_credit_debit_pickup_point() catch error:" + err.toString());
+		}
+	}
+
+
+	async function on_click_credit_debit_coupon_advertiser()
+	{
+		try
+		{
+			console.log("on_click_credit_debit_coupon_advertiser()");
+			
+			if (!confirm("שים לב: אתה עומד  ל ח י י ב   או  ל ז כ ו ת  מפרסם   ב ס כ ו ם   כ ס פ י , האם לבצע?"))
+				return;
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			g_secret_phrase = document.getElementById('g_password_input').value;
+			
+			let coupon_code_input = document.getElementById('g_coupon_code_select_2').value;
+			let amount_input = document.getElementById('g_coupon_credit_debit_amount_input').value;  
+			let comment_input = document.getElementById('g_coupon_credit_debit_comment_input').value;
+
+			const result = await post_to_server_with_busy_retry({ action: "credit_debit_coupon_advertiser", secret_phrase: g_secret_phrase, coupon_code: coupon_code_input,
+			amount: amount_input, comment: comment_input}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				alert("SUCCESS");
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא בדוק את השינויים בבסיס הנתונים לפני שאתה מנסה שנית!");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_credit_debit_coupon_advertiser() catch error:" + err.toString());
+		}
+	}
+
+
+	// ---- Helpers for on_click_list_orders_for_delivery_date() ----
+
+	// Hebrew labels for order fields (used to build the printable report)
+	var g_order_field_labels =
+	{
+		order_id: "מספר הזמנה",
+		status: "סטטוס",
+		customer_name: "שם לקוח",
+		customer_phone: "טלפון לקוח",
+		scheduled_delivery_date: "תאריך אספקה",
+		pickup_point_code: "נקודת איסוף",
+		customer_comments: "הערות לקוח",
+		is_a_new_customer: "לקוח חדש"
+	};
+
+	var g_order_field_order =
+	[
+		"order_id",
+		"status",
+		"customer_name",
+		"customer_phone",
+		"scheduled_delivery_date",
+		"pickup_point_code",
+		"is_a_new_customer",
+		"customer_comments"
+	];
+
+
+	function escape_html(value)
+	{
+		// basic HTML-escaping so customer text (names/comments) can't break the report markup
+		if (value === null || value === undefined)
+			return "";
+
+		return String(value)
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#039;");
+	}
+
+
+	function build_single_order_html(order)
+	{
+		try
+		{
+			let details_rows_html = "";
+
+			for (const field_name of g_order_field_order)
+			{
+				let raw_value = order[field_name];
+
+				if (field_name === "is_a_new_customer")
+				{
+					raw_value = raw_value ? "כן" : "לא";
+				}
+
+				if (raw_value === "" || raw_value === undefined || raw_value === null)
+				{
+					raw_value = "-";
+				}
+
+				const label = g_order_field_labels[field_name] || field_name;
+
+				details_rows_html += `
+					<tr>
+						<td class="detail-label">${escape_html(label)}</td>
+						<td class="detail-value">${escape_html(raw_value)}</td>
+					</tr>`;
+			}
+
+			let products_rows_html = "";
+
+			if (Array.isArray(order.products) && order.products.length > 0)
+			{
+				for (const product of order.products)
+				{
+					products_rows_html += `
+						<tr>
+							<td>${escape_html(product.product_name)}</td>
+							<td>${escape_html(product.product_code)}</td>
+							<td>${escape_html(product.amount)}</td>
+						</tr>`;
+				}
+			}
+			else
+			{
+				products_rows_html = `<tr><td colspan="3">אין מוצרים</td></tr>`;
+			}
+
+			return `
+				<div class="order-block">
+					<table class="details-table">
+						<tbody>
+							${details_rows_html}
+						</tbody>
+					</table>
+
+					<table class="products-table">
+						<thead>
+							<tr>
+								<th>שם מוצר</th>
+								<th>קוד מוצר</th>
+								<th>כמות</th>
+							</tr>
+						</thead>
+						<tbody>
+							${products_rows_html}
+						</tbody>
+					</table>
+				</div>`;
+		}
+		catch (err)
+		{
+			console.log("ERROR: build_single_order_html() catch error:" + err.toString());
+			return "";
+		}
+	}
+
+
+	function build_orders_report_html(orders_array, delivery_date_text)
+	{
+		let all_orders_html = "";
+
+		for (const order of orders_array)
+		{
+			all_orders_html += build_single_order_html(order);
+		}
+
+		if (orders_array.length === 0)
+		{
+			all_orders_html = `<div class="no-orders">לא נמצאו הזמנות לתאריך זה</div>`;
+		}
+
+		return `
+			<!DOCTYPE html>
+			<html lang="he" dir="rtl">
+			<head>
+				<meta charset="UTF-8">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<title>הזמנות ליום ${escape_html(delivery_date_text)}</title>
+				<style>
+					* { box-sizing: border-box; font-family: Arial, sans-serif; }
+
+					body
+					{
+						margin: 0;
+						padding: 12px;
+						background: #f5f5f5;
+						color: #222;
+						font-size: 14px;
+					}
+
+					.report-title
+					{
+						text-align: center;
+						font-size: 18px;
+						font-weight: bold;
+						margin-bottom: 6px;
+					}
+
+					.report-subtitle
+					{
+						text-align: center;
+						font-size: 13px;
+						color: #555;
+						margin-bottom: 14px;
+					}
+
+					.print-button
+					{
+						display: block;
+						width: 100%;
+						max-width: 300px;
+						margin: 0 auto 18px auto;
+						height: 44px;
+						border: none;
+						border-radius: 12px;
+						background: #1d7c45;
+						color: white;
+						font-size: 16px;
+						font-weight: bold;
+						cursor: pointer;
+					}
+
+					.order-block
+					{
+						background: white;
+						border-radius: 12px;
+						padding: 10px;
+						margin-bottom: 16px;
+						box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+						max-width: 500px;
+						margin-left: auto;
+						margin-right: auto;
+					}
+
+					table
+					{
+						width: 100%;
+						border-collapse: collapse;
+						table-layout: fixed;
+					}
+
+					.details-table
+					{
+						margin-bottom: 10px;
+					}
+
+					.details-table td
+					{
+						padding: 5px 4px;
+						border-bottom: 1px solid #eee;
+						word-break: break-word;
+						vertical-align: top;
+					}
+
+					.detail-label
+					{
+						font-weight: bold;
+						width: 38%;
+						color: #444;
+					}
+
+					.products-table th,
+					.products-table td
+					{
+						border: 1px solid #ddd;
+						padding: 5px 4px;
+						text-align: center;
+						word-break: break-word;
+						font-size: 13px;
+					}
+
+					.products-table th
+					{
+						background: #f0f0f0;
+					}
+
+					.no-orders
+					{
+						text-align: center;
+						padding: 30px;
+						font-size: 16px;
+						color: #666;
+					}
+
+					@media print
+					{
+						.print-button { display: none; }
+						body { background: white; }
+						.order-block { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+					}
+				</style>
+			</head>
+			<body>
+				<div class="report-title">רשימת הזמנות</div>
+				<div class="report-subtitle">תאריך אספקה: ${escape_html(delivery_date_text)}</div>
+
+				<button class="print-button" onclick="window.print();">הדפס</button>
+
+				${all_orders_html}
+			</body>
+			</html>`;
+	}
+
+
+	async function on_click_list_orders_for_delivery_date()
+	{
+		try
+		{
+			console.log("on_click_list_orders_for_delivery_date()");
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			g_secret_phrase = document.getElementById('g_password_input').value;
+			
+			let delivery_date_input = document.getElementById('g_delivery_date_input').value;
+
+			const result = await post_to_server_with_busy_retry({ action: "list_orders_for_delivery_date", password: g_secret_phrase, delivery_date: delivery_date_input}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			// example result: {"result":"ok","data":[{"order_id":814,"status":"3_supplied","customer_phone":"972-50-5850492","customer_name":"אלי קופטר","scheduled_delivery_date":"2026-07-14","pickup_point_code":"modiin_emek_haula_34","customer_comments":"","is_a_new_customer":1,"products":[{"product_code":"injera_sour_white_5_units","product_name":"אינגרה מחמצת לבנה","amount":2}]}]}
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				// present the results in a new window/tab , use the titles from the response as the titles of the columns, no need foe translation table.
+				// the results window should be printable. also add a "print" button for easy printing.
+				// the results window should present the order details (in a few rows like    title:value     title:value    and after that the products in a table, and again for the next order etc ...
+				// the minimal required width of the window should be such that the content will be presented on mobile without horizontal scrolling
+
+				const report_html = build_orders_report_html(result.data, delivery_date_input);
+
+				const report_window = window.open("", "_blank");
+
+				if (!report_window)
+				{
+					alert("please allow popup windows and try again");
+					return;
+				}
+
+				report_window.document.open();
+				report_window.document.write(report_html);
+				report_window.document.close();
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_list_orders_for_delivery_date() catch error:" + err.toString());
+		}
+	}
+
+
+	async function on_click_send_admin_link_to_pickup_point()
+	{
+		try
+		{
+			console.log("on_click_send_admin_link_to_pickup_point()");
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			g_secret_phrase = document.getElementById('g_password_input').value;
+			
+			let pickup_point_code_input = document.getElementById('g_pickup_point_code_select_1').value;
+
+			const result = await post_to_server_with_busy_retry({ action: "send_admin_link_to_pickup_point", secret_phrase: g_secret_phrase, pickup_point_code: pickup_point_code_input}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				alert("SUCCESS");
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_send_admin_link_to_pickup_point() catch error:" + err.toString());
+		}
+	}
+
+
+	async function on_click_send_admin_link_to_coupon_advertiser()
+	{
+		try
+		{
+			console.log("on_click_send_admin_link_to_coupon_advertiser()");
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			g_secret_phrase = document.getElementById('g_password_input').value;
+			
+			let advertiser_phone_input = document.getElementById('g_advertiser_phone_input').value;
+
+			const result = await post_to_server_with_busy_retry({ action: "send_admin_link_to_coupon_advertiser", secret_phrase: g_secret_phrase, advertiser_phone: advertiser_phone_input}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				alert("SUCCESS");
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_send_admin_link_to_coupon_advertiser() catch error:" + err.toString());
+		}
+	}
+
+
+	async function get_pickup_points_data()
+	{
+		try
+		{
+			console.log("get_pickup_points_data()");
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			g_secret_phrase = document.getElementById('g_password_input').value;
+			
+			const result = await post_to_server_with_busy_retry({ action: "list_pickup_points", secret_phrase: g_secret_phrase}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			// example result: {"result":"ok","records":{"headers":["pickup_point_code","is_active","secret_phrase","admin_phone","admin_name","pick_up_point_tax_name","pick_up_point_tax_id","min_fee_per_delivery","max_fee_per_delivery","details_short","details_full"],"rows":[["modiin_emek_haula_34","1","ksFG45Bf","972-54-1234567","uri","ממתק לי","111","5","10","מודיעין, עמק החולה 34, במועד האספקה הקרוב מ 08:00 עד 15:00","מודיעין, עמק החולה 34, קניון הממתקים, חנות ממתק לי, 08-1234567, במועד האספקה הקרוב מ 08:00 עד 15:00"],["tel_aviv_dizingof_151","0","wemm56K3S","972-54-7654321","tamie","דלישר","222","1","9","תל אביב, דיזינגוף 151, במועד האספקה הקרוב מ 09:00 עד 15:00","תל אביב, דיזינגוף 151, דלישר, במועד האספקה הקרוב מ 09:00 עד 15:00"],["kfar_saba_hakeshet_6","1","8585FG55","972-54-1237654","rinat","ישראלה","333","2","8","כפר סבא, הקשת 6, במועד האספקה הקרוב מ 08:00 עד 12:00","כפר סבא, הקשת 6, ישראלה, במועד האספקה הקרוב מ 08:00 עד 12:00"]]}}
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				g_pickup_points_data = result.records; // headers + rows array, as returned by the server
+
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: get_pickup_points_data() catch error:" + err.toString());
+		}
+	}
+
+
+	async function get_coupons_data()
+	{
+		try
+		{
+			console.log("get_coupons_data()");
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			g_secret_phrase = document.getElementById('g_password_input').value;
+			
+			const result = await post_to_server_with_busy_retry({ action: "list_coupons", secret_phrase: g_secret_phrase, requesting_entity: "shop_owner"}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			// example result: {"result":"ok","records":{"headers":["coupon_code","advertiser_phone","limit_usage_to_phones","number_of_coupons_left","discount","discount_type_money_or_percentage","valid_till_date","can_client_use_it_more_than_once","is_only_for_new_clients","amount_of_new_customers_that_used_this_coupon","amount_of_existing_customers_that_used_this_coupon","turnover_with_this_coupon","how_many_use_requests_we_rejected"],"rows":[["c20p","972-56-1234567","972-50-5850492",87,"20","percentage","2026-07-17 23:59:59","1","0","0",1,80,""],["c20nis","972-56-1234567","","100","20","money","2027-07-31 23:59:59","1","0","","","",""]]}}
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				g_coupons_data = result.records; // headers + rows array, as returned by the server
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: get_coupons_data() catch error:" + err.toString());
+		}
+	}
+
+
+	// ---- Helpers for on_click_get_monthly_coupon_accounting() and on_click_get_monthly_pickup_point_accounting() ----
+
+	function build_coupon_accounting_table_rows_html(accounting_records)
+	{
+		let rows_html = "";
+
+		for (const row of accounting_records.rows)
+		{
+			let cells_html = "";
+
+			for (const cell_value of row)
+			{
+				const display_value = (cell_value === "" || cell_value === undefined || cell_value === null) ? "-" : cell_value;
+				cells_html += `<td>${escape_html(display_value)}</td>`;
+			}
+
+			rows_html += `<tr>${cells_html}</tr>`;
+		}
+
+		return rows_html;
+	}
+
+
+	function build_coupon_accounting_report_html(accounting_records)
+	{
+		let headers_html = "";
+
+		for (const header of accounting_records.headers)
+		{
+			headers_html += `<th>${escape_html(header)}</th>`;
+		}
+
+		let body_html = build_coupon_accounting_table_rows_html(accounting_records);
+
+		if (accounting_records.rows.length === 0)
+		{
+			body_html = `<tr><td colspan="${accounting_records.headers.length}" class="no-orders">לא נמצאו רשומות</td></tr>`;
+		}
+
+		return `
+			<!DOCTYPE html>
+			<html lang="he" dir="ltr">
+			<head>
+				<meta charset="UTF-8">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<title>דוח חשבונאות קופון</title>
+				<style>
+					* { box-sizing: border-box; font-family: Arial, sans-serif; }
+
+					html, body
+					{
+						margin: 0;
+						padding: 0;
+						width: 100%;
+						max-width: 100vw;
+						background: #f5f5f5;
+						color: #222;
+						font-size: 14px;
+						overflow-x: hidden;
+					}
+
+					.page-wrapper
+					{
+						padding: 12px;
+						max-width: 100%;
+					}
+
+					.report-title
+					{
+						text-align: center;
+						font-size: 18px;
+						font-weight: bold;
+						margin-bottom: 14px;
+					}
+
+					.print-button
+					{
+						display: block;
+						width: 100%;
+						max-width: 300px;
+						margin: 0 auto 18px auto;
+						height: 44px;
+						border: none;
+						border-radius: 12px;
+						background: #1d7c45;
+						color: white;
+						font-size: 16px;
+						font-weight: bold;
+						cursor: pointer;
+					}
+
+					.table-scroll-container
+					{
+						width: 100%;
+						max-width: 100vw;
+						overflow-x: auto;
+						-webkit-overflow-scrolling: touch;
+						background: white;
+						border-radius: 12px;
+						box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+					}
+
+					table
+					{
+						border-collapse: collapse;
+						white-space: nowrap;
+					}
+
+					th, td
+					{
+						border: 1px solid #ddd;
+						padding: 6px 8px;
+						text-align: center;
+						font-size: 13px;
+					}
+
+					th
+					{
+						background: #f0f0f0;
+						position: sticky;
+						top: 0;
+					}
+
+					.no-orders
+					{
+						text-align: center;
+						padding: 30px;
+						font-size: 16px;
+						color: #666;
+						white-space: normal;
+					}
+
+					@media print
+					{
+						.print-button { display: none; }
+						body { background: white; }
+					}
+				</style>
+			</head>
+			<body>
+				<div class="page-wrapper">
+					<div class="report-title">דוח חשבונאות קופון</div>
+
+					<button class="print-button" onclick="window.print();">הדפס</button>
+
+					<div class="table-scroll-container">
+						<table>
+							<thead>
+								<tr>${headers_html}</tr>
+							</thead>
+							<tbody>
+								${body_html}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</body>
+			</html>`;
+	}
+
+
+	async function on_click_get_monthly_coupon_accounting()
+	{
+		try
+		{
+			console.log("on_click_get_monthly_coupon_accounting()");
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			g_secret_phrase = document.getElementById('g_password_input').value;
+			
+			let coupon_code_input = document.getElementById('g_coupon_code_select_1').value;
+			let year_input = document.getElementById('g_coupon_accounting_year_input').value;
+			let month_input = document.getElementById('g_coupon_accounting_month_input').value;
+			
+			const result = await post_to_server_with_busy_retry({ action: "get_monthly_coupon_accounting", secret_phrase: g_secret_phrase, coupon_code: coupon_code_input, year: year_input, month: month_input, requesting_entity: "shop_owner"}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			// example result: {"result":"ok","accounting_records":{"headers":["index","coupon_code","time_stamp","order_id","fixed_new_customer_fee_including_vat","fixed_sale_fee_including_vat","percentage_fee_from_this_sale_tunover_including_vat","total_fees","balance_before_this_transaction","new_balance","comment"],"rows":[[101,"c20p","2026-07-10T16:43:34.000Z",787,5,6,7,18,0,18,""],[102,"c20p","2026-07-10T16:43:34.000Z",788,5,6,7,18,18,36,""]]}}
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				const report_html = build_coupon_accounting_report_html(result.accounting_records);
+
+				const report_window = window.open("", "_blank");
+
+				if (!report_window)
+				{
+					alert("please allow popup windows and try again");
+					return;
+				}
+
+				report_window.document.open();
+				report_window.document.write(report_html);
+				report_window.document.close();
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_get_monthly_coupon_accounting() catch error:" + err.toString());
+		}
+	}
+
+
+	// ---- Helper for on_click_get_monthly_pickup_point_accounting() ----
+	// reuses build_coupon_accounting_table_rows_html() since it only relies on accounting_records.rows being an array of arrays
+
+	function build_pickup_point_accounting_report_html(accounting_records)
+	{
+		let headers_html = "";
+
+		for (const header of accounting_records.headers)
+		{
+			headers_html += `<th>${escape_html(header)}</th>`;
+		}
+
+		let body_html = build_coupon_accounting_table_rows_html(accounting_records);
+
+		if (accounting_records.rows.length === 0)
+		{
+			body_html = `<tr><td colspan="${accounting_records.headers.length}" class="no-orders">לא נמצאו רשומות</td></tr>`;
+		}
+
+		return `
+			<!DOCTYPE html>
+			<html lang="he" dir="ltr">
+			<head>
+				<meta charset="UTF-8">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<title>דוח חשבונאות נקודת איסוף</title>
+				<style>
+					* { box-sizing: border-box; font-family: Arial, sans-serif; }
+
+					html, body
+					{
+						margin: 0;
+						padding: 0;
+						width: 100%;
+						max-width: 100vw;
+						background: #f5f5f5;
+						color: #222;
+						font-size: 14px;
+						overflow-x: hidden;
+					}
+
+					.page-wrapper
+					{
+						padding: 12px;
+						max-width: 100%;
+					}
+
+					.report-title
+					{
+						text-align: center;
+						font-size: 18px;
+						font-weight: bold;
+						margin-bottom: 14px;
+					}
+
+					.print-button
+					{
+						display: block;
+						width: 100%;
+						max-width: 300px;
+						margin: 0 auto 18px auto;
+						height: 44px;
+						border: none;
+						border-radius: 12px;
+						background: #1d7c45;
+						color: white;
+						font-size: 16px;
+						font-weight: bold;
+						cursor: pointer;
+					}
+
+					.table-scroll-container
+					{
+						width: 100%;
+						max-width: 100vw;
+						overflow-x: auto;
+						-webkit-overflow-scrolling: touch;
+						background: white;
+						border-radius: 12px;
+						box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+					}
+
+					table
+					{
+						border-collapse: collapse;
+						white-space: nowrap;
+					}
+
+					th, td
+					{
+						border: 1px solid #ddd;
+						padding: 6px 8px;
+						text-align: center;
+						font-size: 13px;
+					}
+
+					th
+					{
+						background: #f0f0f0;
+						position: sticky;
+						top: 0;
+					}
+
+					.no-orders
+					{
+						text-align: center;
+						padding: 30px;
+						font-size: 16px;
+						color: #666;
+						white-space: normal;
+					}
+
+					@media print
+					{
+						.print-button { display: none; }
+						body { background: white; }
+					}
+				</style>
+			</head>
+			<body>
+				<div class="page-wrapper">
+					<div class="report-title">דוח חשבונאות נקודת איסוף</div>
+
+					<button class="print-button" onclick="window.print();">הדפס</button>
+
+					<div class="table-scroll-container">
+						<table>
+							<thead>
+								<tr>${headers_html}</tr>
+							</thead>
+							<tbody>
+								${body_html}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</body>
+			</html>`;
+	}
+
+
+	async function on_click_get_monthly_pickup_point_accounting()
+	{
+		try
+		{
+			console.log("on_click_get_monthly_pickup_point_accounting()");
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			g_secret_phrase = document.getElementById('g_password_input').value;
+			
+			let pickup_point_code_input = document.getElementById('g_pickup_point_code_select_2').value;
+			let year_input = document.getElementById('g_pickup_point_accounting_year_input').value;
+			let month_input = document.getElementById('g_pickup_point_accounting_month_input').value;
+			
+			const result = await post_to_server_with_busy_retry({ action: "get_monthly_pickup_point_accounting", secret_phrase: g_secret_phrase, pickup_point_code: pickup_point_code_input, year: year_input, month: month_input, requesting_entity: "shop_owner"}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			// example result: {"result":"ok","accounting_records":{"headers":["index","pickup_point_code","time_stamp","order_id","balance_before_this_transaction","amount_including_vat","new_balance","comment"],"rows":[[228,"modiin_emek_haula_34","2026-07-12 18:59:54.119",814,0,10,10,""]]}}
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				const report_html = build_pickup_point_accounting_report_html(result.accounting_records);
+
+				const report_window = window.open("", "_blank");
+
+				if (!report_window)
+				{
+					alert("please allow popup windows and try again");
+					return;
+				}
+
+				report_window.document.open();
+				report_window.document.write(report_html);
+				report_window.document.close();
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_get_monthly_pickup_point_accounting() catch error:" + err.toString());
+		}
+	}
+
+
+	// ---- Helpers for on_click_list_coupons() ----
+
+	function build_single_coupon_html(coupon_row, headers_array)
+	{
+		try
+		{
+			let details_rows_html = "";
+
+			for (let i = 0; i < headers_array.length; i++)
+			{
+				const label = headers_array[i];
+				let raw_value = coupon_row[i];
+
+				if (raw_value === "" || raw_value === undefined || raw_value === null)
+				{
+					raw_value = "-";
+				}
+
+				details_rows_html += `
+					<tr>
+						<td class="detail-label">${escape_html(label)}</td>
+						<td class="detail-value">${escape_html(raw_value)}</td>
+					</tr>`;
+			}
+
+			return `
+				<div class="coupon-block">
+					<table class="details-table">
+						<tbody>
+							${details_rows_html}
+						</tbody>
+					</table>
+				</div>`;
+		}
+		catch (err)
+		{
+			console.log("ERROR: build_single_coupon_html() catch error:" + err.toString());
+			return "";
+		}
+	}
+
+
+	function build_coupons_report_html(coupons_data)
+	{
+		let all_coupons_html = "";
+
+		for (const coupon_row of coupons_data.rows)
+		{
+			all_coupons_html += build_single_coupon_html(coupon_row, coupons_data.headers);
+		}
+
+		if (coupons_data.rows.length === 0)
+		{
+			all_coupons_html = `<div class="no-orders">לא נמצאו קופונים</div>`;
+		}
+
+		return `
+			<!DOCTYPE html>
+			<html lang="he" dir="ltr">
+			<head>
+				<meta charset="UTF-8">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<title>רשימת קופונים</title>
+				<style>
+					* { box-sizing: border-box; font-family: Arial, sans-serif; }
+
+					body
+					{
+						margin: 0;
+						padding: 12px;
+						background: #f5f5f5;
+						color: #222;
+						font-size: 14px;
+					}
+
+					.report-title
+					{
+						text-align: center;
+						font-size: 18px;
+						font-weight: bold;
+						margin-bottom: 14px;
+					}
+
+					.print-button
+					{
+						display: block;
+						width: 100%;
+						max-width: 300px;
+						margin: 0 auto 18px auto;
+						height: 44px;
+						border: none;
+						border-radius: 12px;
+						background: #1d7c45;
+						color: white;
+						font-size: 16px;
+						font-weight: bold;
+						cursor: pointer;
+					}
+
+					.coupon-block
+					{
+						background: white;
+						border-radius: 12px;
+						padding: 10px;
+						margin-bottom: 16px;
+						box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+						max-width: 500px;
+						margin-left: auto;
+						margin-right: auto;
+					}
+
+					table
+					{
+						width: 100%;
+						border-collapse: collapse;
+						table-layout: fixed;
+					}
+
+					.details-table td
+					{
+						padding: 5px 4px;
+						border-bottom: 1px solid #eee;
+						word-break: break-word;
+						vertical-align: top;
+					}
+
+					.detail-label
+					{
+						font-weight: bold;
+						width: 45%;
+						color: #444;
+					}
+
+					.no-orders
+					{
+						text-align: center;
+						padding: 30px;
+						font-size: 16px;
+						color: #666;
+					}
+
+					@media print
+					{
+						.print-button { display: none; }
+						body { background: white; }
+						.coupon-block { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+					}
+				</style>
+			</head>
+			<body>
+				<div class="report-title">רשימת קופונים</div>
+
+				<button class="print-button" onclick="window.print();">הדפס</button>
+
+				${all_coupons_html}
+			</body>
+			</html>`;
+	}
+
+
+	async function on_click_list_coupons()
+	{
+		try
+		{
+			console.log("on_click_list_coupons()");
+
+			
+			// refresh g_coupons_data from the server before displaying it
+			//await get_coupons_data();
+
+			if (!g_coupons_data || !Array.isArray(g_coupons_data.headers) || !Array.isArray(g_coupons_data.rows))
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+				return;
+			}
+
+			const report_html = build_coupons_report_html(g_coupons_data);
+
+			const report_window = window.open("", "_blank");
+
+			if (!report_window)
+			{
+				alert("please allow popup windows and try again");
+				return;
+			}
+
+			report_window.document.open();
+			report_window.document.write(report_html);
+			report_window.document.close();
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_list_coupons() catch error:" + err.toString());
+		}
+	}
+
+
+	// ---- Helpers for on_click_list_pickup_points() ----
+
+	function build_single_pickup_point_html(pickup_point_row, headers_array)
+	{
+		try
+		{
+			let details_rows_html = "";
+
+			for (let i = 0; i < headers_array.length; i++)
+			{
+				const label = headers_array[i];
+				let raw_value = pickup_point_row[i];
+
+				if (raw_value === "" || raw_value === undefined || raw_value === null)
+				{
+					raw_value = "-";
+				}
+
+				details_rows_html += `
+					<tr>
+						<td class="detail-label">${escape_html(label)}</td>
+						<td class="detail-value">${escape_html(raw_value)}</td>
+					</tr>`;
+			}
+
+			return `
+				<div class="pickup-point-block">
+					<table class="details-table">
+						<tbody>
+							${details_rows_html}
+						</tbody>
+					</table>
+				</div>`;
+		}
+		catch (err)
+		{
+			console.log("ERROR: build_single_pickup_point_html() catch error:" + err.toString());
+			return "";
+		}
+	}
+
+
+	function build_pickup_points_report_html(pickup_points_data)
+	{
+		let all_pickup_points_html = "";
+
+		for (const pickup_point_row of pickup_points_data.rows)
+		{
+			all_pickup_points_html += build_single_pickup_point_html(pickup_point_row, pickup_points_data.headers);
+		}
+
+		if (pickup_points_data.rows.length === 0)
+		{
+			all_pickup_points_html = `<div class="no-orders">לא נמצאו נקודות איסוף</div>`;
+		}
+
+		return `
+			<!DOCTYPE html>
+			<html lang="he" dir="ltr">
+			<head>
+				<meta charset="UTF-8">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<title>רשימת נקודות איסוף</title>
+				<style>
+					* { box-sizing: border-box; font-family: Arial, sans-serif; }
+
+					body
+					{
+						margin: 0;
+						padding: 12px;
+						background: #f5f5f5;
+						color: #222;
+						font-size: 14px;
+					}
+
+					.report-title
+					{
+						text-align: center;
+						font-size: 18px;
+						font-weight: bold;
+						margin-bottom: 14px;
+					}
+
+					.print-button
+					{
+						display: block;
+						width: 100%;
+						max-width: 300px;
+						margin: 0 auto 18px auto;
+						height: 44px;
+						border: none;
+						border-radius: 12px;
+						background: #1d7c45;
+						color: white;
+						font-size: 16px;
+						font-weight: bold;
+						cursor: pointer;
+					}
+
+					.pickup-point-block
+					{
+						background: white;
+						border-radius: 12px;
+						padding: 10px;
+						margin-bottom: 16px;
+						box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+						max-width: 500px;
+						margin-left: auto;
+						margin-right: auto;
+					}
+
+					table
+					{
+						width: 100%;
+						border-collapse: collapse;
+						table-layout: fixed;
+					}
+
+					.details-table td
+					{
+						padding: 5px 4px;
+						border-bottom: 1px solid #eee;
+						word-break: break-word;
+						vertical-align: top;
+					}
+
+					.detail-label
+					{
+						font-weight: bold;
+						width: 45%;
+						color: #444;
+					}
+
+					.no-orders
+					{
+						text-align: center;
+						padding: 30px;
+						font-size: 16px;
+						color: #666;
+					}
+
+					@media print
+					{
+						.print-button { display: none; }
+						body { background: white; }
+						.pickup-point-block { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+					}
+				</style>
+			</head>
+			<body>
+				<div class="report-title">רשימת נקודות איסוף</div>
+
+				<button class="print-button" onclick="window.print();">הדפס</button>
+
+				${all_pickup_points_html}
+			</body>
+			</html>`;
+	}
+
+
+	async function on_click_list_pickup_points()
+	{
+		try
+		{
+			console.log("on_click_list_pickup_points()");
+
+			// refresh g_pickup_points_data from the server before displaying it
+			//await get_pickup_points_data();
+
+			if (!g_pickup_points_data || !Array.isArray(g_pickup_points_data.headers) || !Array.isArray(g_pickup_points_data.rows))
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+				return;
+			}
+
+			const report_html = build_pickup_points_report_html(g_pickup_points_data);
+
+			const report_window = window.open("", "_blank");
+
+			if (!report_window)
+			{
+				alert("please allow popup windows and try again");
+				return;
+			}
+
+			report_window.document.open();
+			report_window.document.write(report_html);
+			report_window.document.close();
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_list_pickup_points() catch error:" + err.toString());
+		}
+	}
+
+
+	// ---- Helpers for populate_drop_downs() ----
+
+	function get_column_index(headers_array, column_name)
+	{
+		return headers_array.indexOf(column_name);
+	}
+
+
+	function fill_select_with_options(select_element, options_array)
+	{
+		if (!select_element)
+			return;
+
+		select_element.innerHTML = "";
+
+		for (const option_data of options_array)
+		{
+			const option_element = document.createElement("option");
+			option_element.value = option_data.value;
+			option_element.textContent = option_data.label;
+			select_element.appendChild(option_element);
+		}
+	}
+
+
+	function populate_drop_downs()
+	{
+		try
+		{
+			console.log("populate_drop_downs()");
+
+			// ---- pickup_point_code selects ----
+
+			if (g_pickup_points_data && Array.isArray(g_pickup_points_data.headers) && Array.isArray(g_pickup_points_data.rows))
+			{
+				const code_index = get_column_index(g_pickup_points_data.headers, "pickup_point_code");
+				const is_active_index = get_column_index(g_pickup_points_data.headers, "is_active");
+
+				const pickup_point_options = g_pickup_points_data.rows.map(function(row)
+				{
+					const code = row[code_index];
+					const is_active = (is_active_index !== -1) ? row[is_active_index] : "1";
+					const is_active_bool = (is_active == "1" || is_active === 1);
+					const label = is_active_bool ? code : (code + " (לא פעיל)");
+
+					return { value: code, label: label };
+				});
+
+				const pickup_point_select_ids =
+				[
+					"g_pickup_point_code_select_1",
+					"g_pickup_point_code_select_2",
+					"g_pickup_point_code_select_3"
+				];
+
+				for (const select_id of pickup_point_select_ids)
+				{
+					fill_select_with_options(document.getElementById(select_id), pickup_point_options);
+				}
+			}
+			else
+			{
+				console.log("WARNING: populate_drop_downs() - g_pickup_points_data not ready");
+			}
+
+			// ---- coupon_code selects ----
+
+			if (g_coupons_data && Array.isArray(g_coupons_data.headers) && Array.isArray(g_coupons_data.rows))
+			{
+				const code_index = get_column_index(g_coupons_data.headers, "coupon_code");
+
+				const coupon_options = g_coupons_data.rows.map(function(row)
+				{
+					const code = row[code_index];
+					return { value: code, label: code };
+				});
+
+				const coupon_select_ids =
+				[
+					"g_coupon_code_select_1",
+					"g_coupon_code_select_2"
+				];
+
+				for (const select_id of coupon_select_ids)
+				{
+					fill_select_with_options(document.getElementById(select_id), coupon_options);
+				}
+			}
+			else
+			{
+				console.log("WARNING: populate_drop_downs() - g_coupons_data not ready");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: populate_drop_downs() catch error:" + err.toString());
+		}
+	}
+
+
+	async function on_click_get_data_from_server()
+	{
+		try
+		{
+			console.log("on_click_get_data_from_server()");
+					
+			await get_pickup_points_data();
+			await get_coupons_data();
+			populate_drop_downs(); // with coupon_code and pickup_point_code respectively
+			
+		}
+		catch(error)
+		{
+			console.log("ERROR: on_click_get_data_from_server() failed: catch " + error);
+		}		
+	}
+	
+
+	async function on_page_load()
+	{
+		try
+		{
+			console.log("on_page_load()");
+							
+			g_server_url = get_server_url();
+			
+			let i = 0;			
+			for(i=0; i<10 && g_server_url == ""; i++)
+			{
+				g_server_url = get_server_url();
+				await new Promise(resolve => setTimeout(resolve, 2000)); // sleep
+			}
+			
+			if(i == 10 || g_server_url == "")
+			{
+				alert("לא ניתן להתחבר אל השרת אנא נסה שנית מאוחר יותר");
+				return;
+			}
+			
+			// take the password from the url and put it  in the password input box
+			const password_from_url = get_url_param('password');
+			
+			if (password_from_url !== "")
+			{
+				document.getElementById('g_password_input').value = password_from_url;
+			}
+			
+		}
+		catch(error)
+		{
+			console.log("ERROR: on_page_load() failed: catch " + error);
+		}		
+	}
+	
+	</script>
+	
+</head>
+
+<body onload="on_page_load();">
+
+	<div id="g_loading_overlay">
+		<div class="loading-box"><span id="g_overlay_text">טקסט להחלפה</span></div>
+	</div>
+
+    <div class="container">
+
+        <img src="https://i.ibb.co/KcpPMGxL/logo-medium.png" alt="לוגו רומיה ותמר" class="logo">
+
+        <div class="page-title">ממשק ניהול - בעל חנות</div>
+
+        <!-- password -->
+        <div class="form-card">
+            <div class="form-group">
+                <label for="g_password_input">password</label>
+                <input type="password" id="g_password_input">
+            </div>
+            <button type="button" class="secondary-button" id="g_toggle_password_button" onclick="on_click_toggle_password_visibility();">הצג סיסמה</button>
+			<div>&nbsp;</div>
+            <button class="main-button" id="g_get_data_from_server_button" onclick="on_click_get_data_from_server();">get data from server</button>
+        </div>
+
+        <!-- send_marketing_sms() -->
+        <div class="form-card">
+            <div class="form-card-title">send_marketing_sms()</div>
+            <div class="form-group">
+                <label for="g_sms_text_input">text_to_send</label>
+                <textarea id="g_sms_text_input"></textarea>
+            </div>
+            <button class="main-button" id="g_sms_send_button" onclick="on_click_send_marketing_sms();">send</button>
+        </div>
+
+        <!-- list_orders_for_delivery_date() -->
+        <div class="form-card">
+            <div class="form-card-title">list_orders_for_delivery_date()</div>
+            <div class="form-group">
+                <label for="g_delivery_date_input">delivery_date</label>
+                <input type="text" id="g_delivery_date_input">
+            </div>
+            <button class="main-button" id="g_delivery_date_list_button" onclick="on_click_list_orders_for_delivery_date();">list</button>
+        </div>
+
+        <!-- send_admin_link_to_pickup_point() -->
+        <div class="form-card">
+            <div class="form-card-title">send_admin_link_to_pickup_point()</div>
+            <div class="form-group">
+                <label for="g_pickup_point_code_select_1">pickup_point_code</label>
+                <select id="g_pickup_point_code_select_1"></select>
+            </div>
+			<button class="main-button" id="g_send_admin_link_pickup_point_button" onclick="on_click_send_admin_link_to_pickup_point();">send</button>			
+        </div>
+
+        <!-- send_admin_link_to_coupon_advertiser() -->
+        <div class="form-card">
+            <div class="form-card-title">send_admin_link_to_coupon_advertiser()</div>
+            <div class="form-group">
+                <label for="g_advertiser_phone_input">advertiser_phone</label>
+                <input type="text" id="g_advertiser_phone_input">
+            </div>
+            <button class="main-button" id="g_send_admin_link_advertiser_button" onclick="on_click_send_admin_link_to_coupon_advertiser();">send</button>
+        </div>
+
+        <!-- list_coupons() -->
+        <div class="form-card">
+            <div class="form-card-title">list_coupons()</div>
+            <button class="main-button" id="g_list_coupons_button" onclick="on_click_list_coupons();">list</button>
+        </div>
+
+        <!-- list_pickup_points() -->
+        <div class="form-card">
+            <div class="form-card-title">list_pickup_points()</div>
+            <button class="main-button" id="g_list_pickup_points_button" onclick="on_click_list_pickup_points();">list</button>
+        </div>
+
+        <!-- get_monthly_coupon_accounting() -->
+        <div class="form-card">
+            <div class="form-card-title">get_monthly_coupon_accounting()</div>
+            <div class="form-group">
+                <label for="g_coupon_code_select_1">coupon_code</label>
+                <select id="g_coupon_code_select_1"></select>
+            </div>
+            <div class="form-group">
+                <label for="g_coupon_accounting_year_input">year</label>
+                <input type="text" id="g_coupon_accounting_year_input">
+            </div>
+            <div class="form-group">
+                <label for="g_coupon_accounting_month_input">month</label>
+                <input type="text" id="g_coupon_accounting_month_input">
+            </div>
+            <!-- <div class="form-group">
+                <label for="g_requesting_entity_input_2">requesting_entity</label>
+                <input type="text" id="g_requesting_entity_input_2" value="shop_owner">
+            </div> -->
+            <button class="main-button" id="g_coupon_accounting_list_button" onclick="on_click_get_monthly_coupon_accounting();">list</button>
+        </div>
+
+        <!-- get_monthly_pickup_point_accounting() -->
+        <div class="form-card">
+            <div class="form-card-title">get_monthly_pickup_point_accounting()</div>
+            <div class="form-group">
+                <label for="g_pickup_point_code_select_2">pickup_point_code</label>
+                <select id="g_pickup_point_code_select_2"></select>
+            </div>
+            <div class="form-group">
+                <label for="g_pickup_point_accounting_year_input">year</label>
+                <input type="text" id="g_pickup_point_accounting_year_input">
+            </div>
+            <div class="form-group">
+                <label for="g_pickup_point_accounting_month_input">month</label>
+                <input type="text" id="g_pickup_point_accounting_month_input">
+            </div>
+            <!-- <div class="form-group">
+                <label for="g_requesting_entity_input_3">requesting_entity</label>
+                <input type="text" id="g_requesting_entity_input_3" value="shop_owner">
+            </div> -->
+            <button class="main-button" id="g_pickup_point_accounting_list_button" onclick="on_click_get_monthly_pickup_point_accounting();">list</button>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- credit_debit_pickup_point -->
+        <div class="form-card">
+            <div class="form-card-title">credit_debit_pickup_point</div>
+            <div class="form-group">
+                <label for="g_pickup_point_code_select_3">pickup_point_code</label>
+                <select id="g_pickup_point_code_select_3"></select>
+            </div>
+            <div class="form-group">
+                <label for="g_pickup_point_credit_debit_amount_input">amount</label>
+                <input type="text" id="g_pickup_point_credit_debit_amount_input">
+            </div>
+            <div class="form-group">
+                <label for="g_pickup_point_credit_debit_comment_input">comment</label>
+                <input type="text" id="g_pickup_point_credit_debit_comment_input">
+            </div>
+            <button class="main-button" id="g_credit_debit_pickup_point_button" onclick="on_click_credit_debit_pickup_point();">commit</button>
+        </div>
+
+        <!-- credit_debit_coupon_advertiser -->
+        <div class="form-card">
+            <div class="form-card-title">credit_debit_coupon_advertiser</div>
+            <div class="form-group">
+                <label for="g_coupon_code_select_2">coupon_code</label>
+                <select id="g_coupon_code_select_2"></select>
+            </div>
+            <div class="form-group">
+                <label for="g_coupon_credit_debit_amount_input">amount</label>
+                <input type="text" id="g_coupon_credit_debit_amount_input">
+            </div>
+            <div class="form-group">
+                <label for="g_coupon_credit_debit_comment_input">comment</label>
+                <input type="text" id="g_coupon_credit_debit_comment_input">
+            </div>
+            <button class="main-button" id="g_credit_debit_coupon_advertiser_button" onclick="on_click_credit_debit_coupon_advertiser();">commit</button>
+        </div>
+
+    </div>
+
+</body>
+</html>
