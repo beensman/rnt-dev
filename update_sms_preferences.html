@@ -1,0 +1,372 @@
+<!-- update_sms_preferences.html -->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>rumyah-and-tamar.com</title>
+
+	<style>
+
+        *
+        {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body
+        {
+            margin: 0;
+            padding: 15px;
+            background: #f5f5f5;
+            color: #222;
+        }
+
+        .container
+        {
+            max-width: 500px;
+            margin: auto;
+        }
+
+        .logo
+        {
+            display: block;
+            width: 100%;
+            //max-width: 180px;
+            margin: 0 auto 15px auto;
+        }
+
+        .form-card
+        {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .form-group
+        {
+            margin-bottom: 18px;
+        }
+
+        label
+        {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        input
+        {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            background: white;
+        }
+
+        input:disabled
+        {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .main-button
+        {
+            width: 100%;
+            height: 52px;
+            border: none;
+            border-radius: 14px;
+            background: #1d7c45;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+		#g_loading_overlay
+		{
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.5);
+			z-index: 1000;
+			justify-content: center;
+			align-items: flex-start;
+		}
+
+		#g_loading_overlay .loading-box
+		{
+			background: white;
+			border-radius: 16px;
+			padding: 30px 40px;
+			font-size: 20px;
+			font-weight: bold;
+			color: #1d7c45;
+			margin-top: 20px;
+		}
+
+        /* Checkbox styling matching shop.html */
+        .checkbox-group
+		{
+			display: flex;
+			align-items: flex-start;
+			gap: 10px;
+			margin-bottom: 18px;
+		}
+
+		.checkbox-group input[type="checkbox"]
+		{
+			width: 22px;
+			height: 22px;
+			min-width: 22px;
+			margin-top: 2px;
+			cursor: pointer;
+			accent-color: #1d7c45;
+			border-radius: 5px;
+			padding: 0;
+		}
+
+		.checkbox-group label
+		{
+			font-size: 14px;
+			font-weight: normal;
+			margin-bottom: 0;
+			cursor: pointer;
+			line-height: 1.5;
+		}
+
+	</style>
+	
+	<script>
+
+	var g_server_url = "";
+
+	function get_server_url()
+	{
+		try
+		{
+			console.log("get_server_url()");
+
+			const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a cached version
+			const xhr = new XMLHttpRequest();
+			xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			xhr.send(null);
+
+			if (xhr.status >= 200 && xhr.status < 300)
+			{
+				console.log("URL: " + xhr.responseText.trim());
+				return xhr.responseText.trim();
+			}
+			else
+			{
+				console.log("ERROR: get_server_url() failed: HTTP status " + xhr.status);
+				return "";
+			}
+		}
+		catch (error)
+		{
+			console.log("ERROR: get_server_url() failed: catch " + error);
+			return "";
+		}
+	}
+
+	
+	function get_url_param(param_name)
+	{
+		try
+		{
+			console.log("get_url_param() " + param_name);
+
+			const url_params = new URLSearchParams(window.location.search);
+			const value = url_params.get(param_name);
+
+			if (value === null)
+			{
+				console.log("ERROR: get_url_param() param '" + param_name + "' not found in url");
+				return "";
+			}
+
+			return value;
+		}
+		catch (err)
+		{
+			console.log("ERROR: get_url_param() catch error:" + err.toString());
+			return "";
+		}
+	}
+	
+	
+	function showOverlay(overlay_text)
+	{
+		document.getElementById('g_overlay_text').innerText = overlay_text;
+		document.getElementById('g_loading_overlay').style.display = 'flex';
+	}
+
+
+	function hideOverlay()
+	{
+		document.getElementById('g_loading_overlay').style.display = 'none';
+	}
+	
+
+	async function post_to_server_with_busy_retry(body_object, busy_overlay_text)
+	{
+		// sends a request to the server, if the server responds with "server_is_buisy" it waits 2 seconds (showing busy_overlay_text) and tries again
+		console.log("post_to_server_with_busy_retry() - start" );
+		try
+		{
+			while (true)
+			{
+				const response = await fetch(g_server_url,
+				{
+					method: "POST",
+					headers: { "Content-Type": "text/plain;charset=utf-8" },
+					body: JSON.stringify(body_object),
+					redirect: "follow"
+				});
+
+				const result = await response.json();
+
+				console.log("post_to_server_with_busy_retry() result:" + JSON.stringify(result));
+
+				if (result.result === "server_is_buisy")
+				{
+					showOverlay(busy_overlay_text);
+					await new Promise(resolve => setTimeout(resolve, 2000));
+					continue;
+				}
+				else if(result.result == "server_under_maintenance")
+				{
+					console.log("ERROR: post_to_server_with_busy_retry()  >> server_under_maintenance");
+					return { result: "server_under_maintenance", text: "" };
+				}
+
+				return result;
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: post_to_server_with_busy_retry() catch error:" + err.toString());
+			return { result: "error", text: "" };
+		}
+	}
+	
+
+	async function on_update_click()
+	{
+		try
+		{
+			console.log("on_update_click()");
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			let input_weekly_sms = document.getElementById("g_weekly_sms_checkbox").checked;
+			let input_marketing_sms = document.getElementById("g_marketing_sms_checkbox").checked;
+			let input_password = document.getElementById("g_password_input").value;
+			let input_phone = document.getElementById("g_phone_input").value;
+			
+			
+			const result = await post_to_server_with_busy_retry(
+				{ action: "update_customer_sms_preferences", secret_phrase: input_password, phone_number: input_phone, send_weekly_sms: input_weekly_sms, send_marketing_sms: input_marketing_sms},
+				"השרת עמוס, מנסה שוב, אנא המתינו..."
+			);
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				alert("העדכון התקבל בהצלחה, כעת ניתן לסגור את הדפדפן");
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("העדכון לא הצליח, אנא בדוק את מספר הטלפון ונסה שנית");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_update_click() catch error:" + err.toString());
+		}
+	}
+
+	async function on_page_load()
+	{
+		try
+		{
+			console.log("on_page_load()");
+							
+			g_server_url = get_server_url();
+			
+			let i = 0;			
+			for(i=0; i<10 && g_server_url == ""; i++)
+			{
+				g_server_url = get_server_url();
+				await new Promise(resolve => setTimeout(resolve, 2000)); // sleep
+			}
+			
+			if(i == 10 || g_server_url == "")
+			{
+				alert("לא ניתן להתחבר אל השרת אנא נסה שנית מאוחר יותר");
+				return;
+			}
+
+			// read url params and fill fields
+			document.getElementById("g_password_input").value = get_url_param("password");
+		}
+		catch(error)
+		{
+			console.log("ERROR: on_page_load() failed: catch " + error);
+		}		
+	}
+	
+	</script>
+	
+</head>
+
+<body onload="on_page_load();">
+
+	<div id="g_loading_overlay">
+		<div class="loading-box"><span id="g_overlay_text">טקסט להחלפה</span></div>
+	</div>
+
+    <div class="container">
+        <img src="https://i.ibb.co/KcpPMGxL/logo-medium.png" alt="לוגו רומיה ותמר" class="logo">
+
+        <div class="form-card">
+
+            <div class="form-group">
+                <label>מספר טלפון</label>
+                <input type="text" id="g_phone_input">
+            </div>
+
+            <div class="form-group">
+                <label>סיסמה</label>
+                <input type="text" id="g_password_input" disabled>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="g_weekly_sms_checkbox" checked>
+                <label for="g_weekly_sms_checkbox">שלחו לי תזכורת אחת לשבוע (כיומיים לפני מועד האספקה) עם קישור להזמנה מהירה.</label>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="g_marketing_sms_checkbox" checked>
+                <label for="g_marketing_sms_checkbox">ברצוני לקבל מידע על מוצרים חדשים ומבצעים.</label>
+            </div>
+
+            <button class="main-button" onclick="on_update_click();">
+                שמירה
+            </button>
+
+        </div>
+    </div>
+	
+</body>
+</html>

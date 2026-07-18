@@ -1,0 +1,289 @@
+
+<!-- success.html -->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>rumyah-and-tamar.com</title>
+
+	<style>
+		body
+		{
+			font-family: Arial, sans-serif;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			min-height: 100vh;
+			margin: 0;
+			background: #f9f9f9;
+		}
+		#status-message
+		{
+			font-size: 1.3rem;
+			color: #333;
+			text-align: center;
+			padding: 2rem;
+		}
+	</style>
+	
+	<script>
+
+	var g_did_i_finish_reporting_to_server = 0;
+
+	function getServerUrl()
+	{
+		try
+		{
+			console.log("getServerUrl()");
+
+			const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a cached version
+			const xhr = new XMLHttpRequest();
+			xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			xhr.send(null);
+
+			if (xhr.status >= 200 && xhr.status < 300)
+			{
+				console.log("URL: " + xhr.responseText.trim());
+				return xhr.responseText.trim();
+			}
+			else
+			{
+				console.log("ERROR: getServerUrl() failed: HTTP status " + xhr.status);
+				return "";
+			}
+		}
+		catch (error)
+		{
+			console.log("ERROR: getServerUrl() failed: catch " + error);
+			return "";
+		}
+	}
+
+	
+	/* this function is not in use
+	function decodeWin1255Param(value)
+	{
+		const bytes = [];
+		for (let i = 0; i < value.length; i++)
+		{
+			if (value[i] === '%' && i + 2 < value.length)
+			{
+				bytes.push(parseInt(value.substr(i + 1, 2), 16));
+				i += 2;
+			}
+			else
+			{
+				bytes.push(value.charCodeAt(i));
+			}
+		}
+		return new TextDecoder("windows-1255").decode(new Uint8Array(bytes));
+	}*/
+
+
+	function get_url_params() // returns every thing that is after the ? in the url as is (without encoding or anything. e.g: for http://www.site.com?field=ddd&field2=kkk will return  field=ddd&field2=kkk
+	{
+		try 
+		{
+			console.log("get_url_params()");
+			
+			// window.location.search returns the query string starting with '?'
+			// If there is no query string, it returns an empty string.
+			const search = window.location.search;
+			
+			if (search && search.length > 0) 
+			{
+				// Return the string starting from the character after the '?'
+				return search.substring(1);
+			}
+			
+			return "";
+		} 
+		catch (error) 
+		{
+			console.error("ERROR: get_url_params() failed: " + error);
+			return "";
+		}
+	}
+
+	async function notifyServer(serverUrl, order_id_in, base64_encoded_paramd)
+	{
+		try
+		{
+			console.log("notifyServer()");
+
+			let i=0;
+			for(i=0; i<10;  i++)
+			{
+				try
+				{
+					const response = await fetch(serverUrl,
+					{
+						method: "POST",
+						headers: { "Content-Type": "text/plain;charset=utf-8" },
+						body: JSON.stringify({ action: "max-hyp-success", order_id: order_id_in, url_params: base64_encoded_paramd })
+					});
+					
+					const data = await response.json();
+					
+					console.log("notifyServer() RESULT: " + JSON.stringify(data));
+
+					if (data.result === "server_is_buisy")
+					{
+						await new Promise(resolve => setTimeout(resolve, 1500)); // sleep
+						continue;
+					}
+
+					return data;
+				}
+				catch (err)
+				{
+					console.log("ERROR notifyServer: " + err);
+					await new Promise(resolve => setTimeout(resolve, 1500)); // sleep
+				}
+			}
+			
+			if(i == 10)
+			{
+				alert("עקב בעיה טכנית לא ברור אם התשלום נקלט, אנא צור עימנו קשר דרך הצור קשר באתר");
+			}
+		}
+		catch(error)
+		{
+			console.log("ERROR: notifyServer() failed: catch " + error);
+		}		
+	}
+		
+	
+	window.addEventListener('beforeunload', function (e) 
+	{
+		if (g_did_i_finish_reporting_to_server == 0) 
+		{
+			e.preventDefault();
+			e.returnValue = '';
+			return '';
+		}
+	});
+
+
+	function getRawValue(key, str) 
+	{
+		// Regex explanation:
+		// (?<=^|&) : Lookbehind to ensure the key starts at the beginning or after an &
+		// key=      : Match the specific key followed by =
+		// ([^&]*)  : Capture everything that is NOT an & (the raw value)
+		const regex = new RegExp(`(?<=${key}=)([^&]*)`);
+		const match = str.match(regex);
+		
+		return match ? match[0] : "";
+	}
+	
+	
+	function encode_url(input_original_url)
+	{
+		// A full lookup table for indices 0x80 to 0xFF
+		const win1255Table = [
+			'\u20AC', '\uFFFD', '\u201A', '\u0192', '\u201E', '\u2026', '\u2020', '\u2021',
+			'\u02C6', '\u2030', '\uFFFD', '\u2039', '\uFFFD', '\uFFFD', '\uFFFD', '\uFFFD',
+			'\uFFFD', '\u2018', '\u2019', '\u201C', '\u201D', '\u2022', '\u2013', '\u2014',
+			'\u02DC', '\u2122', '\uFFFD', '\u203A', '\uFFFD', '\uFFFD', '\uFFFD', '\uFFFD',
+			'\u00A0', '\u00A1', '\u00A2', '\u00A3', '\u20AA', '\u00A5', '\u00A6', '\u00A7',
+			'\u00A8', '\u00A9', '\u00D7', '\u00AB', '\u00AC', '\u00AD', '\u00AE', '\u00AF',
+			'\u00B0', '\u00B1', '\u00B2', '\u00B3', '\u00B4', '\u00B5', '\u00B6', '\u00B7',
+			'\u00B8', '\u00B9', '\u00F7', '\u00BB', '\u00BC', '\u00BD', '\u00BE', '\u00BF',
+			'\u05B0', '\u05B1', '\u05B2', '\u05B3', '\u05B4', '\u05B5', '\u05B6', '\u05B7',
+			'\u05B8', '\u05B9', '\uFFFD', '\u05BB', '\u05BC', '\u05BD', '\u05BE', '\u05BF',
+			'\u05C0', '\u05C1', '\u05C2', '\u05C3', '\u05F4', '\u05F3', '\uFFFD', '\uFFFD',
+			'\uFFFD', '\uFFFD', '\uFFFD', '\uFFFD', '\uFFFD', '\uFFFD', '\uFFFD', '\uFFFD',
+			'\u05D0', '\u05D1', '\u05D2', '\u05D3', '\u05D4', '\u05D5', '\u05D6', '\u05D7',
+			'\u05D8', '\u05D9', '\u05DA', '\u05DB', '\u05DC', '\u05DD', '\u05DE', '\u05DF',
+			'\u05E0', '\u05E1', '\u05E2', '\u05E3', '\u05E4', '\u05E5', '\u05E6', '\u05E7',
+			'\u05E8', '\u05E9', '\u05EA', '\uFFFD', '\uFFFD', '\u200E', '\u200F', '\uFFFD'
+		];
+
+		const bytes = [];
+		for (let i = 0; i < input_original_url.length; i++) 
+		{
+			let code = input_original_url.charCodeAt(i);
+			// If it's standard ASCII, push as is
+			if (code < 128) 
+			{
+				bytes.push(code);
+			} 
+			else 
+			{
+				// Find index in our custom table
+				let index = win1255Table.indexOf(input_original_url[i]);
+				bytes.push(index !== -1 ? index + 128 : 63); // 63 is '?'
+			}
+		}
+		const base64 = btoa(String.fromCharCode(...bytes));
+		
+		return base64;
+	}	
+
+
+	async function on_page_load()
+	{
+		try
+		{
+			console.log("on_page_load()");
+					
+			const params = get_url_params();
+			if(params == "")
+			{
+				g_did_i_finish_reporting_to_server = 1;
+				alert("עקב בעיה טכנית לא ברור אם התשלום נקלט, אנא צור עימנו קשר דרך הצור קשר באתר");
+				return;
+			}
+			
+			var serverUrl = getServerUrl();
+			
+			let i = 0;			
+			for(i=0; i<10 && serverUrl == ""; i++)
+			{
+				serverUrl = getServerUrl();
+				await new Promise(resolve => setTimeout(resolve, 2000)); // sleep
+			}
+			
+			if(i == 10)
+			{
+				g_did_i_finish_reporting_to_server = 1;
+				alert("עקב בעיה טכנית לא ברור אם התשלום נקלט, אנא צור עימנו קשר דרך הצור קשר באתר");
+				return;
+			}
+			
+			const encoded_url_params = encode_url(params);
+			
+			// get the order id
+			const order_id = getRawValue('Order', params);
+
+			const result = await notifyServer(serverUrl, order_id, encoded_url_params);
+
+			const msgEl = document.getElementById("status-message");
+			if (result && result.result === "ok")
+			{
+				g_did_i_finish_reporting_to_server = 1;
+				msgEl.textContent = "התשלום אושר בהצלחה! תודה על הזמנתך.";
+			}
+			else
+			{
+				g_did_i_finish_reporting_to_server = 1;
+				msgEl.textContent = "אירעה שגיאה. אנא צרו קשר.";
+			}
+		}
+		catch(error)
+		{
+			console.log("ERROR: on_page_load() failed: catch " + error);
+		}		
+	}
+	
+	</script>
+	
+</head>
+
+<body onload="on_page_load();">
+	<div id="status-message">מעדכן נתונים, נא לא לסגור את הדפדפן</div>
+
+</body>
+</html>

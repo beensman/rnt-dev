@@ -1,0 +1,862 @@
+<!-- coupon_advertiser_admin.html -->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>rumyah-and-tamar.com</title>
+
+	<style>
+
+        *
+        {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body
+        {
+            margin: 0;
+            padding: 15px;
+            background: #f5f5f5;
+            color: #222;
+        }
+
+        .container
+        {
+            max-width: 500px;
+            margin: auto;
+        }
+
+        .logo
+        {
+            display: block;
+            width: 100%;
+            //max-width: 180px;
+            margin: 0 auto 15px auto;
+        }
+
+        .form-card
+        {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .form-group
+        {
+            margin-bottom: 18px;
+        }
+
+        label
+        {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        input
+        {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            background: white;
+        }
+
+        input:disabled
+        {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .main-button
+        {
+            width: 100%;
+            height: 52px;
+            border: none;
+            border-radius: 14px;
+            background: #1d7c45;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+		#g_loading_overlay
+		{
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.5);
+			z-index: 1200;
+			justify-content: center;
+			align-items: flex-start;
+		}
+
+		#g_loading_overlay .loading-box
+		{
+			background: white;
+			border-radius: 16px;
+			padding: 30px 40px;
+			font-size: 20px;
+			font-weight: bold;
+			color: #1d7c45;
+			margin-top: 20px;
+		}
+
+        /* Checkbox styling matching shop.html */
+        .checkbox-group
+		{
+			display: flex;
+			align-items: flex-start;
+			gap: 10px;
+			margin-bottom: 18px;
+		}
+
+		.checkbox-group input[type="checkbox"]
+		{
+			width: 22px;
+			height: 22px;
+			min-width: 22px;
+			margin-top: 2px;
+			cursor: pointer;
+			accent-color: #1d7c45;
+			border-radius: 5px;
+			padding: 0;
+		}
+
+		.checkbox-group label
+		{
+			font-size: 14px;
+			font-weight: normal;
+			margin-bottom: 0;
+			cursor: pointer;
+			line-height: 1.5;
+		}
+
+		/* New styles for coupons page */
+
+		.page-title
+		{
+			text-align: center;
+			font-size: 22px;
+			font-weight: bold;
+			margin: 10px 0 18px 0;
+			color: #222;
+		}
+
+		.top-button-row
+		{
+			display: flex;
+			justify-content: center;
+			margin-bottom: 20px;
+		}
+
+		.top-button-row .main-button
+		{
+			width: auto;
+			min-width: 220px;
+			height: 52px;
+			padding: 0 30px;
+		}
+
+		.records-table-wrapper
+		{
+			overflow-x: auto;
+		}
+
+		table.records-table
+		{
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 13px;
+		}
+
+		table.records-table th
+		{
+			background: #1d7c45;
+			color: white;
+			padding: 10px 6px;
+			text-align: center;
+			white-space: nowrap;
+			font-size: 12px;
+		}
+
+		table.records-table th:first-child
+		{
+			border-top-right-radius: 10px;
+		}
+
+		table.records-table th:last-child
+		{
+			border-top-left-radius: 10px;
+		}
+
+		table.records-table td
+		{
+			padding: 8px 6px;
+			text-align: center;
+			border-bottom: 1px solid #eee;
+			white-space: nowrap;
+		}
+
+		table.records-table td a.coupon-link
+		{
+			color: #1d7c45;
+			font-weight: bold;
+			text-decoration: underline;
+			cursor: pointer;
+		}
+
+		#g_coupon_modal_overlay
+		{
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.5);
+			z-index: 1100;
+			justify-content: center;
+			align-items: center;
+			padding: 15px;
+		}
+
+		#g_coupon_modal_overlay .modal-box
+		{
+			background: white;
+			border-radius: 16px;
+			padding: 20px;
+			box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+			width: 100%;
+			max-width: 500px;
+			max-height: 85vh;
+			overflow-y: auto;
+			position: relative;
+		}
+
+		#g_coupon_modal_overlay .modal-close-btn
+		{
+			position: absolute;
+			top: 10px;
+			left: 10px;
+			width: 32px;
+			height: 32px;
+			border: none;
+			border-radius: 50%;
+			background: #f0f0f0;
+			color: #222;
+			font-size: 18px;
+			font-weight: bold;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			line-height: 1;
+		}
+
+		#g_coupon_modal_overlay .modal-close-btn:hover
+		{
+			background: #e0e0e0;
+		}
+
+		#g_coupon_modal_overlay .modal-title
+		{
+			font-size: 18px;
+			font-weight: bold;
+			margin: 0 0 15px 0;
+			padding-left: 40px; /* leave room for the x button since this is rtl */
+		}
+
+		#g_coupon_modal_overlay .modal-body
+		{
+			font-size: 14px;
+		}
+
+		#g_coupon_modal_overlay .accounting-controls-row
+		{
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			margin-bottom: 18px;
+		}
+
+		#g_coupon_modal_overlay .accounting-controls-row select
+		{
+			flex: 1;
+			padding: 10px 8px;
+			border-radius: 10px;
+			border: 1px solid #ccc;
+			font-size: 14px;
+			background: white;
+		}
+
+		#g_coupon_modal_overlay .accounting-controls-row .main-button
+		{
+			width: auto;
+			height: 42px;
+			padding: 0 20px;
+			font-size: 14px;
+			flex-shrink: 0;
+		}
+
+		#g_accounting_table_area
+		{
+			font-size: 13px;
+		}
+
+	</style>
+	
+	<script>
+	
+	// coupon_advertiser_admin.html?phone=972-56-1234567&password=dfligu958edfkh
+
+	var g_server_url = "";
+	var g_secret_phrase = "";
+	var g_advertiser_phone = "";
+	var g_selected_coupon_code = "";
+	
+
+	function get_server_url()
+	{
+		try
+		{
+			console.log("get_server_url()");
+
+			const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a cached version
+			const xhr = new XMLHttpRequest();
+			xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			xhr.send(null);
+
+			if (xhr.status >= 200 && xhr.status < 300)
+			{
+				console.log("URL: " + xhr.responseText.trim());
+				return xhr.responseText.trim();
+			}
+			else
+			{
+				console.log("ERROR: get_server_url() failed: HTTP status " + xhr.status);
+				return "";
+			}
+		}
+		catch (error)
+		{
+			console.log("ERROR: get_server_url() failed: catch " + error);
+			return "";
+		}
+	}
+
+	
+	function get_url_param(param_name)
+	{
+		try
+		{
+			console.log("get_url_param() " + param_name);
+
+			const url_params = new URLSearchParams(window.location.search);
+			const value = url_params.get(param_name);
+
+			if (value === null)
+			{
+				console.log("ERROR: get_url_param() param '" + param_name + "' not found in url");
+				return "";
+			}
+
+			return value;
+		}
+		catch (err)
+		{
+			console.log("ERROR: get_url_param() catch error:" + err.toString());
+			return "";
+		}
+	}
+	
+	
+	function showOverlay(overlay_text)
+	{
+		document.getElementById('g_overlay_text').innerText = overlay_text;
+		document.getElementById('g_loading_overlay').style.display = 'flex';
+	}
+
+
+	function hideOverlay()
+	{
+		document.getElementById('g_loading_overlay').style.display = 'none';
+	}
+	
+
+	async function post_to_server_with_busy_retry(body_object, busy_overlay_text)
+	{
+		// sends a request to the server, if the server responds with "server_is_buisy" it waits 2 seconds (showing busy_overlay_text) and tries again
+		console.log("post_to_server_with_busy_retry() - start" );
+		try
+		{
+			while (true)
+			{
+				const response = await fetch(g_server_url,
+				{
+					method: "POST",
+					headers: { "Content-Type": "text/plain;charset=utf-8" },
+					body: JSON.stringify(body_object),
+					redirect: "follow"
+				});
+
+				const result = await response.json();
+
+				console.log("post_to_server_with_busy_retry() result:" + JSON.stringify(result));
+
+				if (result.result === "server_is_buisy")
+				{
+					showOverlay(busy_overlay_text);
+					await new Promise(resolve => setTimeout(resolve, 2000));
+					continue;
+				}
+				else if(result.result == "server_under_maintenance")
+				{
+					console.log("ERROR: post_to_server_with_busy_retry()  >> server_under_maintenance");
+					return { result: "server_under_maintenance", text: "" };
+				}
+
+				return result;
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: post_to_server_with_busy_retry() catch error:" + err.toString());
+			return { result: "error", text: "" };
+		}
+	}
+	
+
+	async function on_click_show_coupons()
+	{
+		try
+		{
+			console.log("on_click_show_coupons()");
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+
+			// coupon_advertiser_admin.html?phone=972-56-1234567&password=dfligu958edfkh
+			g_secret_phrase = get_url_param("password");
+			g_advertiser_phone = get_url_param("phone");
+			
+			const result = await post_to_server_with_busy_retry({ action: "list_coupons", secret_phrase: g_secret_phrase, advertiser_phone: g_advertiser_phone, requesting_entity: "coupon_advertiser"}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			// example response: {"result":"ok","records":{"headers":["coupon_code","advertiser_phone","limit_usage_to_phones","number_of_coupons_left","discount","discount_type_money_or_percentage","valid_till_date","can_client_use_it_more_than_once","is_only_for_new_clients","amount_of_new_customers_that_used_this_coupon","amount_of_existing_customers_that_used_this_coupon"],"rows":[["c20p","972-56-1234567","972-50-5850492",87,"20","percentage","2026-07-17 23:59:59","1","0","0",1],["c20nis","972-56-1234567","","100","20","money","2027-07-31 23:59:59","1","0","",""]]}}
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				// fill the records from the response in the table (match the titles from the response with the corresponding columns)
+				fill_coupons_table(result.records);
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_show_coupons() catch error:" + err.toString());
+		}
+	}
+
+
+	var g_header_translations = 
+	{
+		"coupon_code": "קופון",
+		"advertiser_phone": "מפרסם",
+		"limit_usage_to_phones": "מוגבל ל",
+		"number_of_coupons_left": "נשארו",
+		"discount": "הנחה",
+		"discount_type_money_or_percentage": "סוג",
+		"valid_till_date": "תוקף",
+		"can_client_use_it_more_than_once": "רב פעמי",
+		"is_only_for_new_clients": "לחדשים בלבד",
+		"amount_of_new_customers_that_used_this_coupon": "כמה חדשים",
+		"amount_of_existing_customers_that_used_this_coupon": "כמה קיימים"
+	};
+
+
+	// translation table for the coupon accounting (monthly) table columns
+	// edit the hebrew values here whenever you want to change the display labels
+	var g_accounting_header_translations =
+	{
+		"index": "מס'",
+		"coupon_code": "קופון",
+		"time_stamp": "תאריך",
+		"order_id": "הזמנה",
+		"fixed_new_customer_fee_including_vat": "ע.ל.חדש",
+		"fixed_sale_fee_including_vat": "ע.קבועה",
+		"percentage_fee_from_this_sale_tunover_including_vat": "ע.אחוזים",
+		"total_fees": "סה\"כ",
+		"balance_before_this_transaction": "י.לפני",
+		"new_balance": "י.אחרי",
+		"comment": "הערה"
+	};
+
+
+	function fill_coupons_table(coupons_records)
+	{
+		try
+		{
+			console.log("fill_coupons_table()");
+
+			const headers = coupons_records.headers;
+			const rows = coupons_records.rows;
+
+			const thead_row = document.getElementById("g_records_thead_row");
+			const tbody = document.getElementById("g_records_tbody");
+
+			// clear any existing content
+			thead_row.innerHTML = "";
+			tbody.innerHTML = "";
+
+			// build the header row using the static translation map,
+			// but keep the order coming from the server's headers array
+			// so it stays in sync with the row data columns
+			headers.forEach(function(header_name)
+			{
+				const th = document.createElement("th");
+				th.innerText = g_header_translations[header_name] || header_name;
+				thead_row.appendChild(th);
+			});
+
+			const coupon_code_col_index = headers.indexOf("coupon_code");
+
+			// build a body row for each record
+			rows.forEach(function(row)
+			{
+				const tr = document.createElement("tr");
+
+				row.forEach(function(cell_value, col_index)
+				{
+					const td = document.createElement("td");
+
+					if(col_index === coupon_code_col_index)
+					{
+						const link = document.createElement("a");
+						link.className = "coupon-link";
+						link.innerText = cell_value;
+						link.href = "javascript:void(0);";
+						link.addEventListener("click", function()
+						{
+							on_show_coupon_accounting_window(cell_value);
+						});
+						td.appendChild(link);
+					}
+					else
+					{
+						td.innerText = cell_value;
+					}
+
+					tr.appendChild(td);
+				});
+
+				tbody.appendChild(tr);
+			});
+		}
+		catch (err)
+		{
+			console.log("ERROR: fill_coupons_table() catch error:" + err.toString());
+		}
+	}
+
+
+	function on_show_coupon_accounting_window(coupon_code)
+	{
+		try
+		{
+			console.log("on_show_coupon_accounting_window() coupon_code:" + coupon_code);
+			
+			g_selected_coupon_code = coupon_code;
+
+			document.getElementById("g_coupon_modal_title").innerText = "התחשבנות קופון: " + coupon_code;
+
+			// clear any accounting table left over from a previous coupon
+			document.getElementById("g_accounting_table_area").innerHTML = "";
+
+			populate_accounting_year_month_selects();
+
+			show_coupon_modal();
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_show_coupon_accounting_window() catch error:" + err.toString());
+		}
+	}
+
+
+	function populate_accounting_year_month_selects()
+	{
+		try
+		{
+			console.log("populate_accounting_year_month_selects()");
+
+			const year_select = document.getElementById("g_accounting_year_select");
+			const month_select = document.getElementById("g_accounting_month_select");
+
+			const today = new Date();
+			const current_year = today.getFullYear();
+
+			// default selection = the month before the current month
+			let target_month = today.getMonth() + 1; // getMonth() is 0-based, so +1 gives current month 1-12
+			let target_year = current_year;
+
+			/* advertisers look at the preformance in "real" time, so they need the current  monthe to bee selected
+			target_month -= 1;
+			if (target_month === 0)
+			{
+				target_month = 12;
+				target_year -= 1;
+			}
+			*/
+
+			// fill years: current year + previous year
+			year_select.innerHTML = "";
+			[current_year, current_year - 1].forEach(function(year_value)
+			{
+				const option = document.createElement("option");
+				option.value = year_value;
+				option.innerText = year_value;
+				if (year_value === target_year)
+				{
+					option.selected = true;
+				}
+				year_select.appendChild(option);
+			});
+
+			// fill months 1-12
+			month_select.innerHTML = "";
+			for (let m = 1; m <= 12; m++)
+			{
+				const option = document.createElement("option");
+				option.value = m;
+				option.innerText = m;
+				if (m === target_month)
+				{
+					option.selected = true;
+				}
+				month_select.appendChild(option);
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: populate_accounting_year_month_selects() catch error:" + err.toString());
+		}
+	}
+
+
+	async function on_show_coupon_accounting()
+	{
+		try
+		{
+			console.log("on_show_coupon_accounting()");
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+			
+			let year_input = document.getElementById("g_accounting_year_select").value;
+			let month_input = document.getElementById("g_accounting_month_select").value;
+
+			const result = await post_to_server_with_busy_retry({ action: "get_monthly_coupon_accounting", secret_phrase: g_secret_phrase, coupon_code: g_selected_coupon_code, requesting_entity: "coupon_advertiser", year: year_input, month: month_input}, "השרת עמוס, מנסה שוב, אנא המתינו..." );
+			
+			// example response:  {"result":"ok","accounting_records":{"headers":["index","coupon_code","time_stamp","order_id","fixed_new_customer_fee_including_vat","fixed_sale_fee_including_vat","percentage_fee_from_this_sale_tunover_including_vat","total_fees","balance_before_this_transaction","new_balance","comment"],"rows":[[101,"c20p","2026-07-10T16:43:34.000Z",787,5,6,7,18,0,18,""],[102,"c20p","2026-07-10T16:43:34.000Z",788,5,6,7,18,18,36,""]]}}
+
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				fill_coupons_accounting_table(result.accounting_records);
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_show_coupon_accounting() catch error:" + err.toString());
+		}
+	}
+
+
+	function fill_coupons_accounting_table(accounting_records)
+	{
+		try
+		{
+			console.log("fill_coupons_accounting_table()");
+
+			const headers = accounting_records.headers;
+			const rows = accounting_records.rows;
+
+			const area = document.getElementById("g_accounting_table_area");
+
+			// clear any existing content
+			area.innerHTML = "";
+
+			// build the table fresh each time, since (unlike the main coupons
+			// table) there's no static <table> markup for the accounting table
+			const table = document.createElement("table");
+			table.className = "records-table";
+
+			const thead = document.createElement("thead");
+			const thead_row = document.createElement("tr");
+
+			headers.forEach(function(header_name)
+			{
+				const th = document.createElement("th");
+				th.innerText = g_accounting_header_translations[header_name] || header_name;
+				thead_row.appendChild(th);
+			});
+
+			thead.appendChild(thead_row);
+			table.appendChild(thead);
+
+			const tbody = document.createElement("tbody");
+
+			rows.forEach(function(row)
+			{
+				const tr = document.createElement("tr");
+
+				row.forEach(function(cell_value)
+				{
+					const td = document.createElement("td");
+					td.innerText = cell_value;
+					tr.appendChild(td);
+				});
+
+				tbody.appendChild(tr);
+			});
+
+			table.appendChild(tbody);
+			area.appendChild(table);
+		}
+		catch (err)
+		{
+			console.log("ERROR: fill_coupons_accounting_table() catch error:" + err.toString());
+		}
+	}
+
+
+	function show_coupon_modal()
+	{
+		document.getElementById("g_coupon_modal_overlay").style.display = "flex";
+	}
+
+
+	function hide_coupon_modal()
+	{
+		document.getElementById("g_coupon_modal_overlay").style.display = "none";
+	}
+	
+
+	async function on_page_load()
+	{
+		try
+		{
+			console.log("on_page_load()");
+							
+			g_server_url = get_server_url();
+			
+			let i = 0;			
+			for(i=0; i<10 && g_server_url == ""; i++)
+			{
+				g_server_url = get_server_url();
+				await new Promise(resolve => setTimeout(resolve, 2000)); // sleep
+			}
+			
+			if(i == 10 || g_server_url == "")
+			{
+				alert("לא ניתן להתחבר אל השרת אנא נסה שנית מאוחר יותר");
+				return;
+			}
+			
+			document.getElementById("g_show_coupons_button").addEventListener("click", on_click_show_coupons);
+
+			document.getElementById("g_coupon_modal_close_btn").addEventListener("click", hide_coupon_modal);
+
+			document.getElementById("g_coupon_modal_overlay").addEventListener("click", function(e)
+			{
+				// close only if the click was on the overlay itself, not inside the modal box
+				if (e.target.id === "g_coupon_modal_overlay")
+				{
+					hide_coupon_modal();
+				}
+			});
+
+			document.getElementById("g_accounting_show_button").addEventListener("click", on_show_coupon_accounting);
+			
+		}
+		catch(error)
+		{
+			console.log("ERROR: on_page_load() failed: catch " + error);
+		}		
+	}
+	
+	</script>
+	
+</head>
+
+<body onload="on_page_load();">
+
+	<div id="g_loading_overlay">
+		<div class="loading-box"><span id="g_overlay_text">טקסט להחלפה</span></div>
+	</div>
+
+    <div class="container">
+        <img src="https://i.ibb.co/KcpPMGxL/logo-medium.png" alt="לוגו רומיה ותמר" class="logo">
+
+        <div class="top-button-row">
+            <button class="main-button" id="g_show_coupons_button">הצג קופונים</button>
+        </div>
+
+        <div class="records-table-wrapper">
+            <table class="records-table">
+                <thead>
+                    <tr id="g_records_thead_row">
+                        <!-- headers will be populated from the server response -->
+                    </tr>
+                </thead>
+                <tbody id="g_records_tbody">
+                    <!-- rows will be populated from the server -->
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+	<div id="g_coupon_modal_overlay">
+		<div class="modal-box">
+			<button class="modal-close-btn" id="g_coupon_modal_close_btn">&times;</button>
+			<div class="modal-title" id="g_coupon_modal_title">התחשבנות קופון </div>
+			<div class="modal-body" id="g_coupon_modal_body">
+
+				<div class="accounting-controls-row" id="g_accounting_controls_row">
+					<select id="g_accounting_year_select"></select>
+					<select id="g_accounting_month_select"></select>
+					<button class="main-button" id="g_accounting_show_button" type="button">הצג</button>
+				</div>
+
+				<div class="records-table-wrapper" id="g_accounting_table_area">
+					<!-- coupon accounting table gets built here in fill_coupons_accounting_table() -->
+				</div>
+
+			</div>
+		</div>
+	</div>
+	
+</body>
+</html>

@@ -1,0 +1,997 @@
+<!-- shop.html -->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="description" content="ברוכים הבאים לחנות של רומיה ותמר">
+	<title>rumyah-and-tamar.com</title>
+
+	<style>
+
+		*
+		{
+			box-sizing: border-box;
+			font-family: Arial, sans-serif;
+		}
+
+		body
+		{
+			margin: 0;
+			padding: 15px;
+			background: #f5f5f5;
+			color: #222;
+		}
+
+		.container
+		{
+			max-width: 500px;
+			margin: auto;
+		}
+
+		/* LOGO & WELCOME TEXT */
+
+		.logo
+		{
+			display: block;
+			/*   max-width: 180px; */
+			width: 100%;
+			margin: 0 auto 15px auto;
+		}
+
+		.welcome-text
+		{
+			text-align: center;
+			font-size: 32px;
+			font-weight: bold;
+			margin-bottom: 8px;
+		}
+
+		.welcome-link
+		{
+			text-align: center;
+			font-size: 16px;
+			margin-bottom: 15px;
+		}
+
+		.welcome-link a
+		{
+			color: #1d7c45;
+		}
+
+		/* LOADING OVERLAY */
+
+		#g_loading_overlay
+		{
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.5);
+			z-index: 1000;
+			justify-content: center;
+			align-items: flex-start;
+		}
+
+		#g_loading_overlay .loading-box
+		{
+			background: white;
+			border-radius: 16px;
+			padding: 30px 40px;
+			font-size: 20px;
+			font-weight: bold;
+			color: #1d7c45;
+			margin-top: 20px;
+		}
+
+		/* PRODUCT CARD */
+
+		.product-card
+		{
+			background: white;
+			border-radius: 12px;
+			padding: 8px 10px;
+			margin-bottom: 8px;
+			box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+		}
+
+		.product-top
+		{
+			display: flex;
+			gap: 10px;
+			align-items: center;
+		}
+
+		.product-top img
+		{
+			width: 100px;
+			height: 100px;
+			object-fit: cover;
+			border-radius: 8px;
+			flex-shrink: 0;
+		}
+
+		.product-info
+		{
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+		}
+
+		.product-title
+		{
+			font-size: 15px;
+			font-weight: bold;
+		}
+
+		.product-description
+		{
+			font-size: 12px;
+			color: #666;
+		}
+
+		.price-and-quantity
+		{
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			margin-top: 4px;
+			flex-wrap: wrap;
+		}
+
+		.price
+		{
+			font-size: 14px;
+			font-weight: bold;
+			color: #1d7c45;
+			white-space: nowrap;
+		}
+
+		.quantity-box
+		{
+			display: flex;
+			align-items: center;
+			gap: 5px;
+		}
+
+		.quantity-box button
+		{
+			width: 28px;
+			height: 28px;
+			border: none;
+			border-radius: 7px;
+			background: #1d7c45;
+			color: white;
+			font-size: 18px;
+			cursor: pointer;
+			line-height: 1;
+		}
+
+		.quantity-box input
+		{
+			width: 44px;
+			height: 28px;
+			text-align: center;
+			font-size: 14px;
+			border: 1px solid #ccc;
+			border-radius: 7px;
+			padding: 0;
+		}
+
+		.total
+		{
+			font-size: 13px;
+			font-weight: bold;
+			white-space: nowrap;
+		}
+
+		/* FORM */
+
+		.form-card
+		{
+			background: white;
+			border-radius: 16px;
+			padding: 18px;
+			box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+			margin-bottom: 20px;
+		}
+
+		.form-group
+		{
+			margin-bottom: 18px;
+		}
+
+		label
+		{
+			display: block;
+			margin-bottom: 8px;
+			font-weight: bold;
+			font-size: 15px;
+		}
+
+		input,
+		select,
+		textarea
+		{
+			width: 100%;
+			padding: 12px;
+			border-radius: 12px;
+			border: 1px solid #ccc;
+			font-size: 16px;
+			background: white;
+		}
+
+		textarea
+		{
+			resize: vertical;
+		}
+
+		.info-text
+		{
+			font-size: 14px;
+			color: #666;
+			line-height: 1.5;
+			margin-top: -5px;
+			margin-bottom: 20px;
+		}
+
+		.main-button
+		{
+			width: 100%;
+			height: 52px;
+			border: none;
+			border-radius: 14px;
+			background: #1d7c45;
+			color: white;
+			font-size: 18px;
+			font-weight: bold;
+			cursor: pointer;
+		}
+
+		.payment-total
+		{
+			background: #1d7c45;
+			color: white;
+			padding: 18px;
+			border-radius: 16px;
+			text-align: center;
+			font-size: 24px;
+			font-weight: bold;
+			margin-bottom: 20px;
+		}
+
+		.label-note
+		{
+			font-size: 12px;
+			font-weight: normal;
+			color: #999;
+		}
+
+		.checkbox-group
+		{
+			display: flex;
+			align-items: flex-start;
+			gap: 10px;
+			margin-bottom: 18px;
+		}
+
+		.checkbox-group input[type="checkbox"]
+		{
+			width: 22px;
+			height: 22px;
+			min-width: 22px;
+			margin-top: 2px;
+			cursor: pointer;
+			accent-color: #1d7c45;
+			border-radius: 5px;
+			padding: 0;
+		}
+
+		.checkbox-group label
+		{
+			font-size: 14px;
+			font-weight: normal;
+			margin-bottom: 0;
+			cursor: pointer;
+			line-height: 1.5;
+		}
+		
+		.delivery-date-info-text
+		{
+			background: #eaf6ef;
+			border-right: 4px solid #1d7c45;
+			border-radius: 10px;
+			padding: 12px 14px;
+			margin-bottom: 18px;
+			font-size: 13px;
+			color: #2d5a3d;
+			line-height: 1.7;
+		}
+
+	</style>
+
+	<script>
+	/*
+	 * Copyright (c) 2025 Eli Manobella. All rights reserved.
+	 * 
+	 * NOTICE: All information contained herein is, and remains the property 
+	 * of Eli Manobella. The intellectual and technical concepts 
+	 * contained herein are proprietary and protected by trade secret or 
+	 * copyright law. 
+	 * 
+	 * Dissemination of this information or reproduction of this material 
+	 * is strictly forbidden unless prior written permission is obtained 
+	 * from the copyright holder.
+	 */
+ 
+	var g_server_url = "";
+	
+	var g_products_data_from_server; 
+	var g_pickup_points_data_from_server;
+	var g_order = 
+	{
+		products: [],  // empty, populate later { product_code, amount }
+		customer_name: null,
+		customer_phone: null,
+		customer_email: null,
+		customer_comments: null,
+		pickup_point_code: null,
+		coupon_code: null,
+		verification_code: null,
+		terms_accepted: null,
+		sms_reminder_opt_in: null,
+		marketing_opt_in: null
+	};
+	
+
+	function showOverlay(overlay_text)
+	{
+		document.getElementById('g_overlay_text').innerText = overlay_text;
+		document.getElementById('g_loading_overlay').style.display = 'flex';
+	}
+
+	function hideOverlay()
+	{
+		document.getElementById('g_loading_overlay').style.display = 'none';
+	}
+
+
+	async function post_to_server_with_busy_retry(body_object, busy_overlay_text)
+	{
+		// sends a request to the server, if the server responds with "server_is_buisy" it waits 2 seconds (showing busy_overlay_text) and tries again
+		try
+		{
+			while (true)
+			{
+				const response = await fetch(g_server_url,
+				{
+					method: "POST",
+					headers: { "Content-Type": "text/plain;charset=utf-8" },
+					body: JSON.stringify(body_object)
+				});
+
+				const result = await response.json();
+
+				if (result.result === "server_is_buisy")
+				{
+					showOverlay(busy_overlay_text);
+					await new Promise(resolve => setTimeout(resolve, 2000));
+					continue;
+				}
+
+				return result;
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: post_to_server_with_busy_retry() catch error:" + err.toString());
+			return { result: "error", text: "" };
+		}
+	}
+	
+		
+	async function update_inventory()
+	{
+	  try
+	  {
+		const response = await fetch(g_server_url,
+		{
+		  method: "POST",
+		  headers: { "Content-Type": "text/plain;charset=utf-8" },
+		  body: JSON.stringify({ action: "get_inventory" })
+		});
+
+		const result = await response.json();
+
+		if (result.result !== "ok")
+		{
+		  console.error("update_inventory() failed:", result.message);
+		  return;
+		}
+
+		result.data.forEach(item =>
+		{
+		  const card  = document.querySelector(`.product-card[data-code="${item.product_code}"]`);
+		  if (!card) return;
+
+		  const input = card.querySelector(".quantity-input");
+		  const stock = parseInt(item.amount_in_stock, 10);
+
+		  // Update the max attribute
+		  input.max = stock;
+
+		  // If the user already selected more than what's now in stock, clamp it down
+		  const current = parseInt(input.value, 10);
+		  if (current > stock)
+		  {
+			input.value = stock;
+			const unitPrice = parseInt(card.querySelector(".base-price").value, 10);
+			card.querySelector(".total-price").innerText = stock * unitPrice;
+			input.style.backgroundColor = stock > 0 ? "yellow" : "white";
+			updateGrandTotal();
+		  }
+		});
+	  }
+	  catch (err)
+	  {
+		console.error("update_inventory() failed:", err);
+	  }
+
+	  // Schedule the next refresh in 60 seconds
+	  //setTimeout(update_inventory, 60 * 1000);
+	}
+
+	async function show_pickup_points()
+	{
+		await get_pickup_points();
+				
+		document.getElementById('g_pickup_points_select').innerHTML = `<option value="not_selected">יש לבחור נקודת איסוף</option>` + 
+			g_pickup_points_data_from_server.data.map(point => 
+			{
+				return ` <option value="${point.pickup_point_code}"> ${point.details_short} </option>`;
+			}).join('');
+
+	}
+
+		
+	async function get_pickup_points()
+	{
+	  try 
+	  {
+		console.log("get_pickup_points()");
+		
+		const response = await fetch(g_server_url, 
+		{
+		  method: "POST",
+		  headers: {
+          // Use text/plain to avoid a complex CORS preflight OPTIONS request
+          "Content-Type": "text/plain;charset=utf-8" 
+		  },
+		  body: JSON.stringify({ action: "get_pickup_points" })
+		});
+
+		g_pickup_points_data_from_server = await response.json();
+
+		//document.getElementById('g_customer_comments').value = JSON.stringify(g_pickup_points_data_from_server); // for debug
+
+		console.log("get_pickup_points() data from server:");
+		console.log(JSON.stringify(g_pickup_points_data_from_server));
+
+		
+		if (g_pickup_points_data_from_server.result != "ok") 
+		{
+		  console.log("get_pickup_points() failed.");
+		  console.log(JSON.stringify(g_pickup_points_data_from_server));
+		}
+	  } 
+	  catch (error) 
+	  {
+		console.log("get_pickup_points() failed: catch (error). ");
+		console.error("Request failed", error);
+	  }
+	}
+
+
+	async function show_products()
+	{
+		await get_products();
+		
+		document.getElementById('g_products_div').innerHTML = g_products_data_from_server.data
+			.filter(product => product.show_on_shop === "1")
+			.map(product => {
+				return `
+				<div class="product-card" data-code="${product.product_code}"> 
+					<div class="product-top"> 
+						<a target=_new href="${product.product_page_link}"> <img src="${product.thumbnail_image_file}" alt="${product.product_name}"> </a>
+						<div class="product-info"> 
+							<div class="product-title">${product.product_name}</div> 
+							<div class="product-description">${product.product_description}</div> 
+							<div class="price-and-quantity">
+								<div class="price"> 
+									<span class="unit-price">${product.product_price_including_vat}</span> ש"ח 
+								</div> 
+								<input type="hidden" value="${product.product_price_including_vat}" class="base-price"> 
+								<div class="quantity-box"> 
+									<button onclick="changeQuantity(this, 1);">+</button> 
+									<input type="number" value="0" class="quantity-input" max="${product.amount_in_stock}" readonly> 
+									<button onclick="changeQuantity(this, -1);">-</button> 
+								</div> 
+								<div class="total"> 
+									סה"כ: <span class="total-price">0</span> ש"ח 
+								</div> 
+							</div>
+						</div> 
+					</div> 
+				</div>`;
+			}).join('');
+	}
+	
+	
+	async function get_products()
+	{
+	  try 
+	  {
+		console.log("get_products()");
+		
+		const response = await fetch(g_server_url, 
+		{
+		  method: "POST",
+		  headers: {
+          // Use text/plain to avoid a complex CORS preflight OPTIONS request
+          "Content-Type": "text/plain;charset=utf-8" 
+		  },
+		  body: JSON.stringify({ action: "get_products" })
+		});
+
+		g_products_data_from_server = await response.json();
+
+		if (g_products_data_from_server.result != "ok") 
+		{
+		  console.log("ERROR: get_products() failed.");
+		  console.log(JSON.stringify(g_products_data_from_server));
+		}
+	  } 
+	  catch (error) 
+	  {
+		console.log("get_products() failed: catch (error). ");
+		console.error("Request failed", error);
+	  }
+	}
+
+
+	function getServerUrl() 
+	{
+		const xhr = new XMLHttpRequest();
+		const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a chached version
+		xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+		xhr.send();
+		if (xhr.status === 200) 
+		{
+			return xhr.responseText.trim();
+		} 
+		else 
+		{
+			return "";
+		}
+	}
+
+
+	function fill_coupon_code_from_url()
+	{
+		try
+		{
+			const url_params = new URLSearchParams(window.location.search);
+			const coupon_code_from_url = url_params.get("coupon-code");
+			if(coupon_code_from_url)
+			{
+				document.getElementById('g_coupon_code_input').value = coupon_code_from_url;
+			}
+		}
+		catch(err)
+		{
+			console.log("ERROR: fill_coupon_code_from_url() catch error:" + err.toString());
+		}
+	}
+	
+
+	async function on_page_load()
+	{
+		showOverlay("טוען נתונים מהשרת ...");
+		
+		
+		g_server_url = getServerUrl();
+		if(g_server_url == "")
+		{
+			console.log("לא מצליח להתחבר אל שרת הקבצים, יש לרענן את העמוד!");
+			return;
+		}
+		
+		console.log(g_server_url);
+		
+		await Promise.all([show_products(), show_pickup_points(), get_delivery_date_text()]);
+		
+		//await show_products();
+		//await show_pickup_points();
+		//await get_delivery_date_text();
+		hideOverlay();
+		
+		fill_coupon_code_from_url();
+		
+		//update_inventory();
+		
+		// set timer to reload the page after 6 hours - in case the user left the web site open for a long time, we need to make sure he get the updated prices and stocks
+		setTimeout(on_page_load, 21600000); // 6*60*60*1000=21600000
+	}
+
+
+	async function get_delivery_date_text()
+	{
+	  try
+	  {
+		console.log("get_delivery_date_text()");
+		
+		const response = await fetch(g_server_url,
+		{
+		  method: "POST",
+		  headers: { "Content-Type": "text/plain;charset=utf-8" },
+		  body: JSON.stringify({ action: "get_delivery_date_text" })
+		});
+
+		const result = await response.json();
+
+		if (result.result !== "ok")
+		{
+		  console.error("get_delivery_date_text() failed:", result.text);
+		  return;
+		}
+
+		document.querySelector('.delivery-date-info-text').innerHTML = result.data;
+	  }
+	  catch (err)
+	  {
+		console.error("get_delivery_date_text() failed:", err);
+	  }
+	}
+
+
+	function changeQuantity(btn, amount) 
+	{
+		const card = btn.closest('.product-card');
+		const input = card.querySelector('.quantity-input');
+		const totalPriceElement = card.querySelector('.total-price');
+		const unitPrice = parseInt(card.querySelector('.base-price').value);
+		
+		let newQuantity = parseInt(input.value) + amount;
+		
+		if (newQuantity < 0) newQuantity = 0;
+		
+		const maxStock = parseInt(input.max);
+		if (newQuantity > maxStock) newQuantity = maxStock;
+		
+		input.value = newQuantity;
+		totalPriceElement.innerText = newQuantity * unitPrice;
+
+		input.style.backgroundColor = newQuantity > 0 ? "yellow" : "white";
+		
+		updateGrandTotal();
+	}
+	
+
+	function updateGrandTotal()
+	{
+		let grand = 0;
+		document.querySelectorAll('.product-card').forEach(card => {
+			const qty   = parseInt(card.querySelector('.quantity-input').value);
+			const price = parseInt(card.querySelector('.base-price').value);
+			grand += qty * price;
+		});
+
+		document.getElementById('g_grand_total').innerText = grand;
+	}
+
+
+	function onPickupPointChanged(sel)
+	{
+		if (sel.value === "not_selected")
+			sel.style.backgroundColor = "yellow";
+		else
+			sel.style.backgroundColor = "white";
+	}
+
+
+	async function create_new_order()
+	{
+	  try
+	  {
+		const result = await post_to_server_with_busy_retry(
+			{ action: "create_new_order", order: g_order },
+			"השרת עמוס, מנסה שוב, אנא המתינו..."
+		);
+		return result;
+	  }
+	  catch (err)
+	  {
+		console.log("ERROR: create_new_order() catch error:" + err.toString());
+		return { result: "error", text: "" };
+	  }
+	}	
+	
+	
+	async function on_main_button_click(btn)
+	{
+		showOverlay("הזמנתך בבדיקה");
+		
+		g_order.customer_name = document.getElementById('g_customer_name').value;
+		g_order.customer_phone = document.getElementById('g_phone_input').value;
+		//g_order.customer_email = document.getElementById('g_customer_email').value;
+		g_order.customer_comments = document.getElementById('g_customer_comments').value;
+		g_order.pickup_point_code = document.getElementById('g_pickup_points_select').value;
+		g_order.coupon_code = document.getElementById('g_coupon_code_input').value;
+		g_order.verification_code = document.getElementById('g_verification_code').value;
+		g_order.terms_accepted      = document.getElementById('g_terms_checkbox').checked;
+		g_order.sms_reminder_opt_in = document.getElementById('g_sms_reminder_checkbox').checked;
+		g_order.marketing_opt_in    = document.getElementById('g_marketing_opt_in_checkbox').checked;
+					
+		g_order.products = [];// Clear the array first to avoid duplicates if the button is clicked multiple times
+
+		// Select all product cards on the page
+		document.querySelectorAll('.product-card').forEach(card => 
+		{
+			const quantity = parseInt(card.querySelector('.quantity-input').value, 10);
+			
+			// Only insert products that the user actually selected (amount > 0)
+			if (quantity > 0) 
+			{
+				const productCode = card.getAttribute('data-code');
+				g_order.products.push({
+					product_code: productCode,
+					amount: quantity
+				});
+			}
+		});
+		
+		//document.getElementById('g_customer_comments').value = JSON.stringify(g_order); // for debug
+		
+		let result = await create_new_order();
+		
+		hideOverlay();
+		
+		// result.result is only set on "error" (run time error thrown server side) - on a normal create_new_order response there is no result.result field
+		if (result.result === "error")
+		{
+			console.log("ERROR: on_main_button_click() server error:" + JSON.stringify(result));
+			alert("ארעה שגיאה בשרת, אנא נסו שוב");
+			return;
+		}
+		
+		if (result.is_success != 1)
+		{
+			if (result.did_approve_user_agreement == 0)
+			{
+				alert("יש לאשר את תנאי השימוש");
+			}
+			else if (result.is_verification_code_valid == 0)
+			{
+				alert("הקוד שהוזן אינו תקין יש לאמת את מספר הטלפון וללחוץ על שלחו לי קוד אימות");
+			}
+			else if (result.is_a_valid_pickup_point == 0)
+			{
+				alert("יש לבחור נקודת איסוף");
+			}
+			else if (result.is_a_product_out_of_stock == 1)
+			{
+				alert("אחד או יותר מהמוצרים שנבחרו אזל מהמלאי, אנא רעננו את העמוד ונסו שוב");
+			}
+			else if (result.is_a_valid_coupon == 0)
+			{
+				alert("קוד הקופון שהוזן אינו תקין");
+			}
+			else
+			{
+				alert("ארעה שגיאה, אנא נסו שוב");
+			}
+			
+			return;
+		}
+		
+		// is_success == 1 from here on
+		
+		if (result.discount > 0)
+		{
+			if (result.discount_type_money_or_percentage === "percentage")
+			{
+				document.getElementById('g_discount_text').innerText = result.discount + "%";
+			}
+			else
+			{
+				document.getElementById('g_discount_text').innerText = result.discount + ' ש"ח';
+			}
+			/* to be deleted after testing
+			let final_total = result.total_sum_without_discount;
+			if (result.discount_type_money_or_percentage === "percentage")
+			{
+				final_total = result.total_sum_without_discount - (result.total_sum_without_discount * (result.discount / 100));
+			}
+			else
+			{
+				final_total = result.total_sum_without_discount - result.discount;
+			}
+			if (final_total < 0) final_total = 0; */
+			
+			document.getElementById('g_grand_total').innerText = result.total_price_to_be_paid;
+			
+			alert("הקופון נקלט בהצלחה והמחיר עודכן בהתאם");
+		}
+		
+		if(result.clearance_page_url == "" || result.total_price_to_be_paid == 0) // it means the coupon covered all the payment and there is nothing left to pay
+		{
+			alert("הזמנתך נתקבלה בהצלחה, נשלחו אליך הפרטים המלאים של נקודת האיסוף, תודה על קנייתך");
+			return;
+		}
+		
+		alert("הזמנתך נתקבלה בהצלחה, מיד תועבר אל עמוד התשלום, לאחר שהמערכת שלנו תקבל אישור על התשלום ישלחו אליך הפרטים המלאים של נקודת האיסוף, תודה על קנייתך");
+		
+		// redirect him to the clearance page
+		window.location.href = result.clearance_page_url;
+	}
+
+
+	async function sendSmsVerification() 
+	{
+	  try 
+	  {
+		alert("בשניות הקרובות תתקבל הודעה עם קוד אימות במכשיר הטלפון הנייד שלך, יש להזין את הקוד במקום המיועד לכך וללחוץ  על הכפתור מעבר אל עמוד התשלום");
+		
+		const targetPhone = document.getElementById('g_phone_input').value
+		
+		const result = await post_to_server_with_busy_retry(
+			{ action: "send_sms", recipient: targetPhone },
+			"השרת עמוס, מנסה שוב, אנא המתינו..."
+		);
+
+		if (result.result === "ok") 
+		{
+		  //console.log("Verification code sent to " + targetPhone);
+		} 
+		else 
+		{
+		  console.log("ERROR: sendSmsVerification() failed, result:" + JSON.stringify(result));
+		}
+	  } 
+	  catch (error) 
+	  {
+		console.log("ERROR: sendSmsVerification() catch error:" + error.toString());
+	  }
+	}
+	
+	function on_click_send_verification_code()
+	{
+		try
+		{
+			sendSmsVerification();
+			
+			// disable the button and make it a counter from 20 to 1 (20 seconds) then allow to send another verification code
+		}
+		catch(error)
+		{
+		  console.log("ERROR: on_click_send_verification_code() catch error:" + error);
+		}
+	}
+
+	</script>
+	
+</head>
+
+<body onload="on_page_load();">
+
+	<!-- LOADING OVERLAY -->
+	<div id="g_loading_overlay">
+		<div class="loading-box"><span id="g_overlay_text">טקסט להחלפה</span></div>
+	</div>
+
+	<!-- LOGO & WELCOME TEXT -->
+	<div class="container">
+		<img src="https://i.ibb.co/KcpPMGxL/logo-medium.png" alt="לוגו רומיה ותמר" class="logo"> <!-- https://i.ibb.co/2L4HRRz/logo-medium.png -->
+		<div class="welcome-text">ברוכים הבאים לחנות של רומיה ותמר</div>
+		<div class="welcome-link"><a href="https://www.rumyah-and-tamar.com/">מוצרים שלא קיימים במלאי לא מוצגים כאן, לצפיה בכל המוצרים שלנו לחצו כאן</a></div>
+	</div>
+
+	<div class="container" id="g_products_div">
+
+	</div>
+	
+	<div class="container">
+		
+		<!-- coupon -->
+
+		<div class="form-group">
+			<label>קוד קופון במידה וישנו (ההנחה תתעדכן לאחר אימות מספר טלפון)</label>
+			<input type="text" id="g_coupon_code_input">
+		</div>
+
+		<div class="form-group">
+			הנחה <span id="g_discount_text">0 ש"ח</span>
+		</div>
+
+		<!-- TOTAL -->
+
+		<div class="payment-total">
+			סה"כ לתשלום: <span id="g_grand_total">0</span> ש"ח
+		</div>
+
+		<!-- FORM -->
+
+		<div class="form-card">
+
+			<div class="form-group">
+				<label>בחרו נקודה לאיסוף עצמי <span class="label-note">(לאחר ביצוע ההזמנה נשלח אליכם פרטים מלאים)</span></label>
+
+				<select id="g_pickup_points_select" onchange="onPickupPointChanged(this);" style="background-color: yellow;">
+					</option>
+				</select>
+			</div>
+
+			<div class="delivery-date-info-text">
+			שימו לב: מועד האספקה הקרוב הוא יום שישי ה 24.06.2026. במועד האספקה הקרוב יסופקו הזמנות ששולמו עד ליום חמישי בשעה 04:00. הזמנות ששולמו לאחר מכן יסופקו במועד האספקה הבא.
+			</div>
+
+			<div class="form-group">
+				<label>הערות לקוח</label>
+				<textarea rows="4" id="g_customer_comments"></textarea>
+			</div>
+
+			<div class="form-group">
+				<label>שם מלא</label>
+				<input type="text" id="g_customer_name">
+			</div>
+
+			<div class="form-group">
+				<label>מספר טלפון ישראלי</label>
+				<div style="display:flex; gap:8px;">
+					<input type="text" id="g_phone_input" style="flex:1;">
+					<button onclick="on_click_send_verification_code();" style="white-space:nowrap; padding:0 14px; border:none; border-radius:12px; background:#1d7c45; color:white; font-size:15px; font-weight:bold; cursor:pointer;">שלחו לי קוד</button>
+				</div>
+			</div>
+
+			<div class="info-text">
+				המערכת תשלח קוד אימות בהודעת טקסט אל המספר שהוזן,
+				אנא וודאו כי המספר נכון
+			</div>
+
+			<div class="form-group">
+				<label>קוד אימות</label>
+				<input type="text" id="g_verification_code">
+			</div>
+
+			<div class="checkbox-group">
+				<input type="checkbox" id="g_terms_checkbox"><label for="g_terms_checkbox">קראתי ואני מסכים ומקבל את התקנון ותנאי השימוש באתר.</label>
+				
+			</div>
+
+			<div class="checkbox-group">
+				<input type="checkbox" id="g_sms_reminder_checkbox">
+				<label for="g_sms_reminder_checkbox">שלחו לי תזכורת אחת לשבוע (כיומיים לפני מועד האספקה) עם קישור להזמנה מהירה.</label>
+			</div>
+
+			<div class="checkbox-group">
+				<input type="checkbox" id="g_marketing_opt_in_checkbox">
+				<label for="g_marketing_opt_in_checkbox">ברצוני לקבל מידע על מוצרים חדשים ומבצעים.</label>
+			</div>
+
+			<!--
+			<div class="form-group">
+				<label>כתובת מייל למשלוח חשבונית</label>
+				<input type="email" id="g_customer_email">
+			</div>
+			-->
+
+			<button class="main-button" id="g_main_button" onclick="on_main_button_click(this);">
+				מעבר אל עמוד התשלום
+			</button>
+
+		</div>
+
+	</div>
+
+</body>
+</html>

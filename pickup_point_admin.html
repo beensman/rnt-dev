@@ -1,0 +1,582 @@
+<!-- pickup_point_admin.html -->
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>rumyah-and-tamar.com</title>
+
+	<style>
+
+        *
+        {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body
+        {
+            margin: 0;
+            padding: 15px;
+            background: #f5f5f5;
+            color: #222;
+        }
+
+        .container
+        {
+            max-width: 500px;
+            margin: auto;
+        }
+
+        .logo
+        {
+            display: block;
+            width: 100%;
+            //max-width: 180px;
+            margin: 0 auto 15px auto;
+        }
+
+        .form-card
+        {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .form-group
+        {
+            margin-bottom: 18px;
+        }
+
+        label
+        {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        input
+        {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            background: white;
+        }
+
+        input:disabled
+        {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .main-button
+        {
+            width: 100%;
+            height: 52px;
+            border: none;
+            border-radius: 14px;
+            background: #1d7c45;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+		#g_loading_overlay
+		{
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.5);
+			z-index: 1000;
+			justify-content: center;
+			align-items: flex-start;
+		}
+
+		#g_loading_overlay .loading-box
+		{
+			background: white;
+			border-radius: 16px;
+			padding: 30px 40px;
+			font-size: 20px;
+			font-weight: bold;
+			color: #1d7c45;
+			margin-top: 20px;
+		}
+
+        /* Checkbox styling matching shop.html */
+        .checkbox-group
+		{
+			display: flex;
+			align-items: flex-start;
+			gap: 10px;
+			margin-bottom: 18px;
+		}
+
+		.checkbox-group input[type="checkbox"]
+		{
+			width: 22px;
+			height: 22px;
+			min-width: 22px;
+			margin-top: 2px;
+			cursor: pointer;
+			accent-color: #1d7c45;
+			border-radius: 5px;
+			padding: 0;
+		}
+
+		.checkbox-group label
+		{
+			font-size: 14px;
+			font-weight: normal;
+			margin-bottom: 0;
+			cursor: pointer;
+			line-height: 1.5;
+		}
+
+		/* New styles for monthly report page */
+
+		.page-title
+		{
+			text-align: center;
+			font-size: 22px;
+			font-weight: bold;
+			margin: 10px 0 18px 0;
+			color: #222;
+		}
+
+		.filter-row
+		{
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 20px;
+		}
+
+		.filter-row select
+		{
+			flex: 1;
+			padding: 12px 8px;
+			border-radius: 12px;
+			border: 1px solid #ccc;
+			font-size: 15px;
+			background: white;
+			font-family: Arial, sans-serif;
+		}
+
+		.filter-row .main-button
+		{
+			width: auto;
+			flex: 0 0 auto;
+			height: 46px;
+			padding: 0 22px;
+			font-size: 15px;
+		}
+
+		.records-table-wrapper
+		{
+			overflow-x: auto;
+		}
+
+		table.records-table
+		{
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 13px;
+		}
+
+		table.records-table th
+		{
+			background: #1d7c45;
+			color: white;
+			padding: 10px 6px;
+			text-align: center;
+			white-space: nowrap;
+			font-size: 12px;
+		}
+
+		table.records-table th:first-child
+		{
+			border-top-right-radius: 10px;
+		}
+
+		table.records-table th:last-child
+		{
+			border-top-left-radius: 10px;
+		}
+
+		table.records-table td
+		{
+			padding: 8px 6px;
+			text-align: center;
+			border-bottom: 1px solid #eee;
+			white-space: nowrap;
+		}
+
+	</style>
+	
+	<script>
+	
+	//  pickup_point_admin.html?pickup_point_secret_phrase=ksFG45Bf&pickup_point_code=modiin_emek_haula_34
+
+	var g_server_url = "";
+	var g_secret_phrase = "";
+	var g_pickup_point_code = "";
+
+	function get_server_url()
+	{
+		try
+		{
+			console.log("get_server_url()");
+
+			const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a cached version
+			const xhr = new XMLHttpRequest();
+			xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			xhr.send(null);
+
+			if (xhr.status >= 200 && xhr.status < 300)
+			{
+				console.log("URL: " + xhr.responseText.trim());
+				return xhr.responseText.trim();
+			}
+			else
+			{
+				console.log("ERROR: get_server_url() failed: HTTP status " + xhr.status);
+				return "";
+			}
+		}
+		catch (error)
+		{
+			console.log("ERROR: get_server_url() failed: catch " + error);
+			return "";
+		}
+	}
+
+	
+	function get_url_param(param_name)
+	{
+		try
+		{
+			console.log("get_url_param() " + param_name);
+
+			const url_params = new URLSearchParams(window.location.search);
+			const value = url_params.get(param_name);
+
+			if (value === null)
+			{
+				console.log("ERROR: get_url_param() param '" + param_name + "' not found in url");
+				return "";
+			}
+
+			return value;
+		}
+		catch (err)
+		{
+			console.log("ERROR: get_url_param() catch error:" + err.toString());
+			return "";
+		}
+	}
+	
+	
+	function showOverlay(overlay_text)
+	{
+		document.getElementById('g_overlay_text').innerText = overlay_text;
+		document.getElementById('g_loading_overlay').style.display = 'flex';
+	}
+
+
+	function hideOverlay()
+	{
+		document.getElementById('g_loading_overlay').style.display = 'none';
+	}
+	
+
+	async function post_to_server_with_busy_retry(body_object, busy_overlay_text)
+	{
+		// sends a request to the server, if the server responds with "server_is_buisy" it waits 2 seconds (showing busy_overlay_text) and tries again
+		console.log("post_to_server_with_busy_retry() - start" );
+		try
+		{
+			while (true)
+			{
+				const response = await fetch(g_server_url,
+				{
+					method: "POST",
+					headers: { "Content-Type": "text/plain;charset=utf-8" },
+					body: JSON.stringify(body_object),
+					redirect: "follow"
+				});
+
+				const result = await response.json();
+
+				console.log("post_to_server_with_busy_retry() result:" + JSON.stringify(result));
+
+				if (result.result === "server_is_buisy")
+				{
+					showOverlay(busy_overlay_text);
+					await new Promise(resolve => setTimeout(resolve, 2000));
+					continue;
+				}
+				else if(result.result == "server_under_maintenance")
+				{
+					console.log("ERROR: post_to_server_with_busy_retry()  >> server_under_maintenance");
+					return { result: "server_under_maintenance", text: "" };
+				}
+
+				return result;
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: post_to_server_with_busy_retry() catch error:" + err.toString());
+			return { result: "error", text: "" };
+		}
+	}
+	
+
+	async function on_click_show()
+	{
+		try
+		{
+			console.log("on_click_show()");
+			
+			showOverlay("מתחבר אל השרת, אין לסגור את העמוד, נא להמתין");
+
+			g_secret_phrase = get_url_param("pickup_point_secret_phrase");
+			g_pickup_point_code = get_url_param("pickup_point_code");
+			let year_value = document.getElementById("g_year_select").value;
+			let month_value = document.getElementById("g_month_select").value;
+			
+			const result = await post_to_server_with_busy_retry(
+				{ action: "get_monthly_pickup_point_accounting", secret_phrase: g_secret_phrase, pickup_point_code: g_pickup_point_code, requesting_entity: "pickup_point", year: year_value, month: month_value},
+				"השרת עמוס, מנסה שוב, אנא המתינו..."
+			);
+			
+			// example response: {"result":"ok","accounting_records":{"headers":["index","pickup_point_code","time_stamp","order_id","balance_before_this_transaction","amount_including_vat","new_balance","comment"],"rows":[[228,"modiin_emek_haula_34","2026-07-12 18:59:54.119",814,0,10,10,""]]}}
+			
+			hideOverlay();
+			
+			if(result.result == "ok")
+			{
+				// fill the records from the response in the table (match the titles from the response with the corresponding columns)
+				fill_records_table(result.accounting_records);
+			}
+			else if(result.result == "server_under_maintenance")
+			{
+				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
+			}
+			else
+			{
+				alert("חלה שגיאה, אנא נסה שנית מאוחר יותר");
+			}
+		}
+		catch (err)
+		{
+			console.log("ERROR: on_click_show() catch error:" + err.toString());
+		}
+	}
+
+
+	function fill_records_table(accounting_records)
+	{
+		try
+		{
+			console.log("fill_records_table()");
+
+			const tbody = document.getElementById("g_records_tbody");
+			tbody.innerHTML = ""; // clear any previous rows
+
+			if (!accounting_records || !accounting_records.headers || !accounting_records.rows)
+			{
+				console.log("ERROR: fill_records_table() missing headers/rows in response");
+				return;
+			}
+
+			const headers = accounting_records.headers;
+			const rows = accounting_records.rows;
+
+			// map each expected field name to its column index in the response
+			const col = {
+				index: headers.indexOf("index"),
+				pickup_point_code: headers.indexOf("pickup_point_code"),
+				time_stamp: headers.indexOf("time_stamp"),
+				order_id: headers.indexOf("order_id"),
+				balance_before: headers.indexOf("balance_before_this_transaction"),
+				amount: headers.indexOf("amount_including_vat"),
+				new_balance: headers.indexOf("new_balance"),
+				comment: headers.indexOf("comment")
+			};
+
+			rows.forEach(function(row)
+			{
+				const tr = document.createElement("tr");
+
+				const fields = [
+					row[col.index],
+					row[col.pickup_point_code],
+					row[col.time_stamp],
+					row[col.order_id],
+					row[col.balance_before],
+					row[col.amount],
+					row[col.new_balance],
+					row[col.comment]
+				];
+
+				fields.forEach(function(value)
+				{
+					const td = document.createElement("td");
+					td.textContent = (value === undefined || value === null) ? "" : value;
+					tr.appendChild(td);
+				});
+
+				tbody.appendChild(tr);
+			});
+		}
+		catch (err)
+		{
+			console.log("ERROR: fill_records_table() catch error:" + err.toString());
+		}
+	}
+
+
+	function setup_year_and_month_dropdowns()
+	{
+		try
+		{
+			console.log("setup_year_and_month_dropdowns()");
+
+			const today = new Date();
+			const current_year = today.getFullYear();
+			const previous_year = current_year - 1;
+
+			// set the year dropdown values to be this year + the previus year (only 2 values)
+			const year_select = document.getElementById("g_year_select");
+			year_select.innerHTML = "";
+
+			[previous_year, current_year].forEach(function(y)
+			{
+				const opt = document.createElement("option");
+				opt.value = y;
+				opt.textContent = y;
+				year_select.appendChild(opt);
+			});
+
+			// set the month and year drop down selected values to be the previus month (e.g if today is 01-2026 it should be 12-2025)
+			let prev_month = today.getMonth(); // getMonth() is 0-based, so this already equals "current month - 1" in 1-based terms
+			let prev_month_year = current_year;
+
+			if (prev_month === 0) // today.getMonth() === 0 means January -> previous month is December of previous year
+			{
+				prev_month = 12;
+				prev_month_year = previous_year;
+			}
+
+			year_select.value = prev_month_year;
+			document.getElementById("g_month_select").value = prev_month;
+		}
+		catch (err)
+		{
+			console.log("ERROR: setup_year_and_month_dropdowns() catch error:" + err.toString());
+		}
+	}
+
+
+	async function on_page_load()
+	{
+		try
+		{
+			console.log("on_page_load()");
+							
+			g_server_url = get_server_url();
+			
+			let i = 0;			
+			for(i=0; i<10 && g_server_url == ""; i++)
+			{
+				g_server_url = get_server_url();
+				await new Promise(resolve => setTimeout(resolve, 2000)); // sleep
+			}
+			
+			if(i == 10 || g_server_url == "")
+			{
+				alert("לא ניתן להתחבר אל השרת אנא נסה שנית מאוחר יותר");
+				return;
+			}
+			
+			setup_year_and_month_dropdowns();
+
+			document.getElementById("g_show_button").addEventListener("click", on_click_show);
+		}
+		catch(error)
+		{
+			console.log("ERROR: on_page_load() failed: catch " + error);
+		}		
+	}
+	
+	</script>
+	
+</head>
+
+<body onload="on_page_load();">
+
+	<div id="g_loading_overlay">
+		<div class="loading-box"><span id="g_overlay_text">טקסט להחלפה</span></div>
+	</div>
+
+    <div class="container">
+        <img src="https://i.ibb.co/KcpPMGxL/logo-medium.png" alt="לוגו רומיה ותמר" class="logo">
+
+        <div class="page-title">דו"ח פעילות חודשי</div>
+
+        <div class="filter-row">
+            <select id="g_year_select">
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+            </select>
+
+            <select id="g_month_select">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+                <option value="11">11</option>
+                <option value="12">12</option>
+            </select>
+
+            <button class="main-button" id="g_show_button">הצג</button>
+        </div>
+
+        <div class="records-table-wrapper">
+            <table class="records-table">
+                <thead>
+                    <tr>
+                        <th>מס.</th>
+                        <th>נקודה</th>
+                        <th>זמן</th>
+                        <th>הזמנה</th>
+                        <th>י.לפני</th>
+                        <th>סכום</th>
+                        <th>י.אחרי</th>
+                        <th>הערות</th>
+                    </tr>
+                </thead>
+                <tbody id="g_records_tbody">
+                    <!-- rows will be populated from the server -->
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+	
+</body>
+</html>
