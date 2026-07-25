@@ -24,6 +24,17 @@
  
 	var g_server_url = "";
 	
+	var g_show_categories = 1;
+
+	// NEW: null = show the categories grid (root) if g_show_categories is 1, or "show all products" if g_show_categories is 0.
+	// Any other value = the category_code currently selected, whose products are shown.
+	var g_current_category_code = null;
+
+	// NEW: quantities selected by the user, kept independently from the DOM so they survive
+	// navigating between the categories grid and different categories' product lists.
+	// Keyed by product_code -> quantity (number).
+	var g_cart_quantities = {};
+	
 	var g_products_data_from_server; 
 	var g_pickup_points_data_from_server;
 	var g_order = 
@@ -109,6 +120,16 @@
 
 		result.data.forEach(item =>
 		{
+		  // NEW: keep the stock number stored in g_products_data_from_server in sync too,
+		  // so categories/products that are not currently on screen still have correct stock.
+		  const storedProduct = g_products_data_from_server && g_products_data_from_server.data
+			? g_products_data_from_server.data.find(p => p.product_code === item.product_code)
+			: null;
+		  if (storedProduct)
+		  {
+			storedProduct.amount_in_stock = item.amount_in_stock;
+		  }
+
 		  const card  = document.querySelector(`.product-card[data-code="${item.product_code}"]`);
 		  if (!card) return;
 
@@ -126,6 +147,7 @@
 			const unitPrice = parseInt(card.querySelector(".base-price").value, 10);
 			card.querySelector(".total-price").innerText = stock * unitPrice;
 			input.style.backgroundColor = stock > 0 ? "yellow" : "white";
+			g_cart_quantities[item.product_code] = stock;
 			updateGrandTotal();
 			updateCart();
 		  }
@@ -194,35 +216,139 @@
 	async function show_products()
 	{
 		await get_products();
-		
-		document.getElementById('g_products_div').innerHTML = g_products_data_from_server.data
+		render_top_section();
+	}
+
+
+	// NEW: decides whether the top section ("מתחם עליון") should show the categories
+	// grid or the product cards, and renders the right one.
+	function render_top_section()
+	{
+		if (g_show_categories === 1 && g_current_category_code === null)
+		{
+			render_categories();
+		}
+		else
+		{
+			render_product_cards();
+		}
+	}
+
+
+	// NEW: renders the categories grid (2 per row), derived from the unique
+	// category_code values found among the products returned from the server.
+	function render_categories()
+	{
+		const categoriesMap = new Map();
+
+		g_products_data_from_server.data
 			.filter(product => product.show_on_shop === "1")
-			.map(product => {
+			.forEach(product => {
+				if (!categoriesMap.has(product.category_code))
+				{
+					categoriesMap.set(product.category_code,
+					{
+						category_code: product.category_code,
+						category_name: product.category_name,
+						category_image: product.category_image
+					});
+				}
+			});
+
+		document.getElementById('g_products_div').innerHTML = Array.from(categoriesMap.values())
+			.map(category => {
 				return `
-				<div class="product-card" data-code="${product.product_code}">
-					<div class="product-bottom-row">
-						<a target=_new href="${product.product_page_link}"> <img src="${product.thumbnail_image_file}" alt="${product.product_name}" class="product-image"> </a>
-						<div class="product-details-col">
-							<div class="product-title">${product.product_name}</div>
-							<div class="product-description">${product.product_description}</div>
-							<div class="price-qty-total">
-								<div class="price"> 
-									<span class="unit-price">${product.product_price_including_vat}</span> ש"ח 
-								</div> 
-								<input type="hidden" value="${product.product_price_including_vat}" class="base-price"> 
-								<div class="quantity-box"> 
-									<button onclick="changeQuantity(this, 1);">+</button> 
-									<input type="number" value="0" class="quantity-input" max="${product.amount_in_stock}" readonly> 
-									<button onclick="changeQuantity(this, -1);">-</button> 
-								</div> 
-								<div class="total"> 
-									סה"כ: <span class="total-price">0</span> ש"ח 
-								</div> 
-							</div>
-						</div>
-					</div>
+				<div class="category-card" onclick="onCategoryClick('${category.category_code}');">
+					<div class="category-title">${category.category_name}</div>
+					<img src="${category.category_image}" alt="${category.category_name}" class="category-image">
 				</div>`;
 			}).join('');
+
+		updateCart();
+	}
+
+
+	// NEW: called when a category card is clicked - switches the top section to
+	// show only the products that belong to that category.
+	function onCategoryClick(category_code)
+	{
+		g_current_category_code = category_code;
+		render_product_cards();
+	}
+
+
+	// NEW: called from the "back to categories" link shown above the product list
+	// when categories are enabled - returns to the categories grid.
+	function onBackToCategoriesClick()
+	{
+		g_current_category_code = null;
+		render_categories();
+	}
+
+
+	// NEW: renders the product cards (one per row). If categories are enabled,
+	// only products belonging to g_current_category_code are shown, and a "back
+	// to categories" link is added above the list. Quantities are restored from
+	// g_cart_quantities so a selection made earlier is not lost.
+	function render_product_cards()
+	{
+		const filteredProducts = g_products_data_from_server.data.filter(product => {
+			if (product.show_on_shop !== "1") return false;
+
+			if (g_show_categories === 1 && g_current_category_code !== null)
+			{
+				return product.category_code === g_current_category_code;
+			}
+
+			return true;
+		});
+
+		let backButtonHtml = '';
+		if (g_show_categories === 1 && g_current_category_code !== null)
+		{
+			backButtonHtml = `<div class="back-to-categories" onclick="onBackToCategoriesClick();">&#8594; חזרה לקטגוריות</div>`;
+		}
+
+		const cardsHtml = filteredProducts.map(product => {
+
+			const stock = parseInt(product.amount_in_stock, 10);
+			let qty = g_cart_quantities[product.product_code] || 0;
+			if (qty > stock)
+			{
+				qty = stock;
+				g_cart_quantities[product.product_code] = qty;
+			}
+
+			const unitPrice = parseInt(product.product_price_including_vat, 10);
+			const bgColor = qty > 0 ? "yellow" : "white";
+
+			return `
+			<div class="product-card" data-code="${product.product_code}">
+				<div class="product-bottom-row">
+					<a target=_new href="${product.product_page_link}"> <img src="${product.thumbnail_image_file}" alt="${product.product_name}" class="product-image"> </a>
+					<div class="product-details-col">
+						<div class="product-title">${product.product_name}</div>
+						<div class="product-description">${product.product_description}</div>
+						<div class="price-qty-total">
+							<div class="price"> 
+								<span class="unit-price">${product.product_price_including_vat}</span> ש"ח 
+							</div> 
+							<input type="hidden" value="${product.product_price_including_vat}" class="base-price"> 
+							<div class="quantity-box"> 
+								<button onclick="changeQuantity(this, 1);">+</button> 
+								<input type="number" value="${qty}" class="quantity-input" max="${stock}" style="background-color: ${bgColor};" readonly> 
+								<button onclick="changeQuantity(this, -1);">-</button> 
+							</div> 
+							<div class="total"> 
+								סה"כ: <span class="total-price">${qty * unitPrice}</span> ש"ח 
+							</div> 
+						</div>
+					</div>
+				</div>
+			</div>`;
+		}).join('');
+
+		document.getElementById('g_products_div').innerHTML = backButtonHtml + cardsHtml;
 
 		updateCart();
 	}
@@ -370,6 +496,7 @@
 	function changeQuantity(btn, amount) 
 	{
 		const card = btn.closest('.product-card');
+		const productCode = card.getAttribute('data-code');
 		const input = card.querySelector('.quantity-input');
 		const totalPriceElement = card.querySelector('.total-price');
 		const unitPrice = parseInt(card.querySelector('.base-price').value);
@@ -385,29 +512,42 @@
 		totalPriceElement.innerText = newQuantity * unitPrice;
 
 		input.style.backgroundColor = newQuantity > 0 ? "yellow" : "white";
+
+		// NEW: persist the quantity so it is not lost when navigating between categories
+		g_cart_quantities[productCode] = newQuantity;
 		
 		updateGrandTotal();
 		updateCart();
 	}
 	
 
+	// CHANGED: now sums over g_cart_quantities + the full product list (instead of scanning
+	// the DOM), so the total is correct even when only one category's cards are on screen.
 	function updateGrandTotal()
 	{
 		let grand = 0;
-		document.querySelectorAll('.product-card').forEach(card => {
-			const qty   = parseInt(card.querySelector('.quantity-input').value);
-			const price = parseInt(card.querySelector('.base-price').value);
-			grand += qty * price;
-		});
+
+		for (const product_code in g_cart_quantities)
+		{
+			const qty = g_cart_quantities[product_code];
+			if (qty > 0)
+			{
+				const product = g_products_data_from_server.data.find(p => p.product_code === product_code);
+				if (product)
+				{
+					grand += qty * parseInt(product.product_price_including_vat, 10);
+				}
+			}
+		}
 
 		document.getElementById('g_grand_total').innerText = grand;
 	}
 
 
-	// NEW: builds/refreshes the shopping-cart table located between the products
-	// section and the rest of the form. Shows one row per product that has a
-	// quantity greater than 0, with a smaller thumbnail, name, qty, unit price
-	// and line total, followed by a summary row with the sum of all products.
+	// CHANGED: builds/refreshes the shopping-cart table located between the products
+	// section and the rest of the form. Now reads from g_cart_quantities + the full
+	// product list (instead of scanning the DOM), so it stays correct regardless of
+	// which category's products are currently shown on screen.
 	function updateCart()
 	{
 		const tbody = document.getElementById('g_cart_tbody');
@@ -416,29 +556,29 @@
 		let rowsHtml = '';
 		let totalSum = 0;
 
-		document.querySelectorAll('.product-card').forEach(card => {
-			const qty = parseInt(card.querySelector('.quantity-input').value, 10);
-
+		for (const product_code in g_cart_quantities)
+		{
+			const qty = g_cart_quantities[product_code];
 			if (qty > 0)
 			{
-				const imgSrc     = card.querySelector('.product-image').src;
-				const imgAlt     = card.querySelector('.product-image').alt;
-				const name       = card.querySelector('.product-title').innerText;
-				const unitPrice  = parseInt(card.querySelector('.base-price').value, 10);
-				const lineTotal  = qty * unitPrice;
+				const product = g_products_data_from_server.data.find(p => p.product_code === product_code);
+				if (!product) continue;
+
+				const unitPrice = parseInt(product.product_price_including_vat, 10);
+				const lineTotal = qty * unitPrice;
 
 				totalSum += lineTotal;
 
 				rowsHtml += `
 					<tr>
-						<td><img src="${imgSrc}" alt="${imgAlt}" class="cart-item-image"></td>
-						<td>${name}</td>
+						<td><img src="${product.thumbnail_image_file}" alt="${product.product_name}" class="cart-item-image"></td>
+						<td>${product.product_name}</td>
 						<td>${qty}</td>
 						<td>${unitPrice}</td>
 						<td>${lineTotal}</td>
 					</tr>`;
 			}
-		});
+		}
 
 		if (rowsHtml === '')
 		{
@@ -548,21 +688,21 @@
 					
 		g_order.products = [];// Clear the array first to avoid duplicates if the button is clicked multiple times
 
-		// Select all product cards on the page
-		document.querySelectorAll('.product-card').forEach(card => 
+		// CHANGED: build the order's product list from g_cart_quantities (instead of scanning
+		// the DOM), since not all selected products are necessarily on screen right now.
+		for (const product_code in g_cart_quantities)
 		{
-			const quantity = parseInt(card.querySelector('.quantity-input').value, 10);
-			
+			const quantity = g_cart_quantities[product_code];
+
 			// Only insert products that the user actually selected (amount > 0)
-			if (quantity > 0) 
+			if (quantity > 0)
 			{
-				const productCode = card.getAttribute('data-code');
 				g_order.products.push({
-					product_code: productCode,
+					product_code: product_code,
 					amount: quantity
 				});
 			}
-		});
+		}
 		
 		//document.getElementById('g_customer_comments').value = JSON.stringify(g_order); // for debug
 		
@@ -775,9 +915,9 @@
 			margin-top: 20px;
 		}
 
-		/* PRODUCTS - all products live inside one big merged card, each product
-		   is only bounded by a thin border. CHANGED: one product per row (full width),
-		   image on the right side, all other details stacked to the left of the image. */
+		/* PRODUCTS / CATEGORIES - all products (or all categories) live inside one big
+		   merged card ("מתחם"). Products: one per row, image on the right side, all
+		   other details stacked to the left of the image. Categories: two per row. */
 
 		#g_products_div
 		{
@@ -833,7 +973,7 @@
 			flex-shrink: 0;
 		}
 
-		/* NEW: column holding title, description and price/qty/total, placed to the
+		/* column holding title, description and price/qty/total, placed to the
 		   left of the image (in RTL, the element that appears second in the row
 		   markup is rendered on the left side) */
 
@@ -906,7 +1046,54 @@
 			white-space: nowrap;
 		}
 
-		/* NEW: SHOPPING CART - middle "מתחם" between the products section and the
+		/* NEW: CATEGORIES - two cards per row, title text above the category image */
+
+		.category-card
+		{
+			width: calc(50% - 4px);
+			border: 1px solid #ddd;
+			border-radius: 10px;
+			padding: 10px;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 8px;
+			cursor: pointer;
+			text-align: center;
+			user-select: none;
+		}
+
+		.category-title
+		{
+			font-size: 15px;
+			font-weight: bold;
+		}
+
+		.category-image
+		{
+			width: 100%;
+			aspect-ratio: 1 / 1;
+			object-fit: cover;
+			border-radius: 8px;
+		}
+
+		/* NEW: "back to categories" link shown above the product list when a category is open */
+
+		.back-to-categories
+		{
+			width: 100%;
+			padding: 8px 14px;
+			background: #eaf6ef;
+			color: #1d7c45;
+			border-radius: 10px;
+			font-size: 14px;
+			font-weight: bold;
+			cursor: pointer;
+			user-select: none;
+			text-align: center;
+		}
+
+		/* SHOPPING CART - middle "מתחם" between the products section and the
 		   rest of the form. Table format: image, product name, qty, unit price, total,
 		   followed by a summary row. */
 
@@ -1150,7 +1337,7 @@
 			font-size: 14px;
 		}
 
-		/* phone number box - CHANGED: now the same size as the coupon input box (10ch),
+		/* phone number box - same size as the coupon input box (10ch),
 		   and verification code box (8 chars), placed side by side with the "send code" button */
 
 		.phone-input
@@ -1241,12 +1428,12 @@
 		<div class="welcome-link"><a href="https://www.rumyah-and-tamar.com/">מוצרים שלא קיימים במלאי לא מוצגים כאן, לצפיה בכל המוצרים שלנו לחצו כאן</a></div>
 	</div>
 
-	<!-- PRODUCTS (מתחם עליון) -->
+	<!-- PRODUCTS / CATEGORIES (מתחם עליון) -->
 	<div class="container" id="g_products_div">
 
 	</div>
 
-	<!-- NEW: SHOPPING CART (מתחם אמצעי) -->
+	<!-- SHOPPING CART (מתחם אמצעי) -->
 	<div class="container" id="g_cart_div">
 		<table class="cart-table">
 			<thead>
