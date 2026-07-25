@@ -7,308 +7,6 @@
 	<meta name="description" content="ברוכים הבאים לחנות של רומיה ותמר">
 	<title>rumyah-and-tamar.com</title>
 
-	<style>
-
-		*
-		{
-			box-sizing: border-box;
-			font-family: Arial, sans-serif;
-		}
-
-		body
-		{
-			margin: 0;
-			padding: 15px;
-			background: #f5f5f5;
-			color: #222;
-		}
-
-		.container
-		{
-			max-width: 500px;
-			margin: auto;
-		}
-
-		/* LOGO & WELCOME TEXT */
-
-		.logo
-		{
-			display: block;
-			/*   max-width: 180px; */
-			width: 100%;
-			margin: 0 auto 15px auto;
-		}
-
-		.welcome-text
-		{
-			text-align: center;
-			font-size: 32px;
-			font-weight: bold;
-			margin-bottom: 8px;
-		}
-
-		.welcome-link
-		{
-			text-align: center;
-			font-size: 16px;
-			margin-bottom: 15px;
-		}
-
-		.welcome-link a
-		{
-			color: #1d7c45;
-		}
-
-		/* LOADING OVERLAY */
-
-		#g_loading_overlay
-		{
-			display: none;
-			position: fixed;
-			inset: 0;
-			background: rgba(0, 0, 0, 0.5);
-			z-index: 1000;
-			justify-content: center;
-			align-items: flex-start;
-		}
-
-		#g_loading_overlay .loading-box
-		{
-			background: white;
-			border-radius: 16px;
-			padding: 30px 40px;
-			font-size: 20px;
-			font-weight: bold;
-			color: #1d7c45;
-			margin-top: 20px;
-		}
-
-		/* PRODUCT CARD */
-
-		.product-card
-		{
-			background: white;
-			border-radius: 12px;
-			padding: 8px 10px;
-			margin-bottom: 8px;
-			box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-		}
-
-		.product-top
-		{
-			display: flex;
-			gap: 10px;
-			align-items: center;
-		}
-
-		.product-top img
-		{
-			width: 100px;
-			height: 100px;
-			object-fit: cover;
-			border-radius: 8px;
-			flex-shrink: 0;
-		}
-
-		.product-info
-		{
-			flex: 1;
-			display: flex;
-			flex-direction: column;
-			gap: 2px;
-		}
-
-		.product-title
-		{
-			font-size: 15px;
-			font-weight: bold;
-		}
-
-		.product-description
-		{
-			font-size: 12px;
-			color: #666;
-		}
-
-		.price-and-quantity
-		{
-			display: flex;
-			align-items: center;
-			gap: 8px;
-			margin-top: 4px;
-			flex-wrap: wrap;
-		}
-
-		.price
-		{
-			font-size: 14px;
-			font-weight: bold;
-			color: #1d7c45;
-			white-space: nowrap;
-		}
-
-		.quantity-box
-		{
-			display: flex;
-			align-items: center;
-			gap: 5px;
-		}
-
-		.quantity-box button
-		{
-			width: 28px;
-			height: 28px;
-			border: none;
-			border-radius: 7px;
-			background: #1d7c45;
-			color: white;
-			font-size: 18px;
-			cursor: pointer;
-			line-height: 1;
-		}
-
-		.quantity-box input
-		{
-			width: 44px;
-			height: 28px;
-			text-align: center;
-			font-size: 14px;
-			border: 1px solid #ccc;
-			border-radius: 7px;
-			padding: 0;
-		}
-
-		.total
-		{
-			font-size: 13px;
-			font-weight: bold;
-			white-space: nowrap;
-		}
-
-		/* FORM */
-
-		.form-card
-		{
-			background: white;
-			border-radius: 16px;
-			padding: 18px;
-			box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-			margin-bottom: 20px;
-		}
-
-		.form-group
-		{
-			margin-bottom: 18px;
-		}
-
-		label
-		{
-			display: block;
-			margin-bottom: 8px;
-			font-weight: bold;
-			font-size: 15px;
-		}
-
-		input,
-		select,
-		textarea
-		{
-			width: 100%;
-			padding: 12px;
-			border-radius: 12px;
-			border: 1px solid #ccc;
-			font-size: 16px;
-			background: white;
-		}
-
-		textarea
-		{
-			resize: vertical;
-		}
-
-		.info-text
-		{
-			font-size: 14px;
-			color: #666;
-			line-height: 1.5;
-			margin-top: -5px;
-			margin-bottom: 20px;
-		}
-
-		.main-button
-		{
-			width: 100%;
-			height: 52px;
-			border: none;
-			border-radius: 14px;
-			background: #1d7c45;
-			color: white;
-			font-size: 18px;
-			font-weight: bold;
-			cursor: pointer;
-		}
-
-		.payment-total
-		{
-			background: #1d7c45;
-			color: white;
-			padding: 18px;
-			border-radius: 16px;
-			text-align: center;
-			font-size: 24px;
-			font-weight: bold;
-			margin-bottom: 20px;
-		}
-
-		.label-note
-		{
-			font-size: 12px;
-			font-weight: normal;
-			color: #999;
-		}
-
-		.checkbox-group
-		{
-			display: flex;
-			align-items: flex-start;
-			gap: 10px;
-			margin-bottom: 18px;
-		}
-
-		.checkbox-group input[type="checkbox"]
-		{
-			width: 22px;
-			height: 22px;
-			min-width: 22px;
-			margin-top: 2px;
-			cursor: pointer;
-			accent-color: #1d7c45;
-			border-radius: 5px;
-			padding: 0;
-		}
-
-		.checkbox-group label
-		{
-			font-size: 14px;
-			font-weight: normal;
-			margin-bottom: 0;
-			cursor: pointer;
-			line-height: 1.5;
-		}
-		
-		.delivery-date-info-text
-		{
-			background: #eaf6ef;
-			border-right: 4px solid #1d7c45;
-			border-radius: 10px;
-			padding: 12px 14px;
-			margin-bottom: 18px;
-			font-size: 13px;
-			color: #2d5a3d;
-			line-height: 1.7;
-		}
-
-	</style>
 
 	<script>
 	/*
@@ -500,28 +198,26 @@
 			.filter(product => product.show_on_shop === "1")
 			.map(product => {
 				return `
-				<div class="product-card" data-code="${product.product_code}"> 
-					<div class="product-top"> 
-						<a target=_new href="${product.product_page_link}"> <img src="${product.thumbnail_image_file}" alt="${product.product_name}"> </a>
-						<div class="product-info"> 
-							<div class="product-title">${product.product_name}</div> 
-							<div class="product-description">${product.product_description}</div> 
-							<div class="price-and-quantity">
-								<div class="price"> 
-									<span class="unit-price">${product.product_price_including_vat}</span> ש"ח 
-								</div> 
-								<input type="hidden" value="${product.product_price_including_vat}" class="base-price"> 
-								<div class="quantity-box"> 
-									<button onclick="changeQuantity(this, 1);">+</button> 
-									<input type="number" value="0" class="quantity-input" max="${product.amount_in_stock}" readonly> 
-									<button onclick="changeQuantity(this, -1);">-</button> 
-								</div> 
-								<div class="total"> 
-									סה"כ: <span class="total-price">0</span> ש"ח 
-								</div> 
-							</div>
-						</div> 
-					</div> 
+				<div class="product-card" data-code="${product.product_code}">
+					<div class="product-title">${product.product_name}</div>
+					<div class="product-description">${product.product_description}</div>
+					<div class="product-bottom-row">
+						<a target=_new href="${product.product_page_link}"> <img src="${product.thumbnail_image_file}" alt="${product.product_name}" class="product-image"> </a>
+						<div class="price-qty-total">
+							<div class="price"> 
+								<span class="unit-price">${product.product_price_including_vat}</span> ש"ח 
+							</div> 
+							<input type="hidden" value="${product.product_price_including_vat}" class="base-price"> 
+							<div class="quantity-box"> 
+								<button onclick="changeQuantity(this, 1);">+</button> 
+								<input type="number" value="0" class="quantity-input" max="${product.amount_in_stock}" readonly> 
+								<button onclick="changeQuantity(this, -1);">-</button> 
+							</div> 
+							<div class="total"> 
+								סה"כ: <span class="total-price">0</span> ש"ח 
+							</div> 
+						</div>
+					</div>
 				</div>`;
 			}).join('');
 	}
@@ -563,7 +259,7 @@
 	{
 		const xhr = new XMLHttpRequest();
 		const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a chached version
-		xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+		xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
 		xhr.send();
 		if (xhr.status === 200) 
 		{
@@ -592,12 +288,24 @@
 			console.log("ERROR: fill_coupon_code_from_url() catch error:" + err.toString());
 		}
 	}
+
+
+	// NEW: selects "home_delivery" as the default delivery method when the page loads
+	function set_default_delivery_method()
+	{
+		const homeDeliveryCard = document.querySelector('.delivery-method-option[data-value="home_delivery"]');
+		if (homeDeliveryCard)
+		{
+			onDeliveryMethodChanged(homeDeliveryCard);
+		}
+	}
 	
 
 	async function on_page_load()
 	{
 		showOverlay("טוען נתונים מהשרת ...");
 		
+		set_default_delivery_method();
 		
 		g_server_url = getServerUrl();
 		if(g_server_url == "")
@@ -696,6 +404,54 @@
 			sel.style.backgroundColor = "yellow";
 		else
 			sel.style.backgroundColor = "white";
+	}
+
+
+	// NEW: toggles between the "pickup point" section and the "home delivery address" section
+	// depending on the delivery method the user selected. The delivery method is now chosen
+	// by clicking one of the two card-style buttons (no separate radio input elements).
+	// NOTE: this only handles the visual show/hide for now. The actual order-submission
+	// logic (adding 30 ש"ח for home delivery, saving the address fields into g_order, etc.)
+	// will be added in the next stage.
+	function onDeliveryMethodChanged(card)
+	{
+		const optionsBox = document.getElementById('g_delivery_method_options');
+		const deliveryMethod = card.getAttribute('data-value');
+
+		// mark the clicked card as selected, and un-mark its sibling
+		optionsBox.querySelectorAll('.delivery-method-option').forEach(c => c.classList.remove('selected'));
+		card.classList.add('selected');
+
+		// once a choice is made, remove the "not selected yet" highlight from the options box
+		optionsBox.style.backgroundColor = "white";
+
+		const pickupSection = document.getElementById('g_pickup_section');
+		const deliverySection = document.getElementById('g_delivery_section');
+
+		if (deliveryMethod === "pickup")
+		{
+			pickupSection.style.display = "block";
+			deliverySection.style.display = "none";
+		}
+		else if (deliveryMethod === "home_delivery")
+		{
+			pickupSection.style.display = "none";
+			deliverySection.style.display = "block";
+		}
+		else
+		{
+			pickupSection.style.display = "none";
+			deliverySection.style.display = "none";
+		}
+	}
+
+
+	// NEW: placeholder for the "החל קופון" button.
+	// The real validation / discount calculation will be added in a later stage.
+	function on_apply_coupon_click()
+	{
+		console.log("on_apply_coupon_click() - to be implemented in next stage");
+		alert("פונקציונליות החלת הקופון תתווסף בשלב הבא");
 	}
 
 
@@ -800,11 +556,11 @@
 		{
 			if (result.discount_type_money_or_percentage === "percentage")
 			{
-				document.getElementById('g_discount_text').innerText = result.discount + "%";
+				document.getElementById('g_discount_text').value = result.discount + "%";
 			}
 			else
 			{
-				document.getElementById('g_discount_text').innerText = result.discount + ' ש"ח';
+				document.getElementById('g_discount_text').value = result.discount + ' ש"ח';
 			}
 			/* to be deleted after testing
 			let final_total = result.total_sum_without_discount;
@@ -840,22 +596,26 @@
 	{
 	  try 
 	  {
-		alert("בשניות הקרובות תתקבל הודעה עם קוד אימות במכשיר הטלפון הנייד שלך, יש להזין את הקוד במקום המיועד לכך וללחוץ  על הכפתור מעבר אל עמוד התשלום");
+		showOverlay("המערכת שולחת אליך הודעה עם קוד אימות");
 		
 		const targetPhone = document.getElementById('g_phone_input').value
 		
 		const result = await post_to_server_with_busy_retry(
-			{ action: "send_sms", recipient: targetPhone },
+			{ action: "send_verification_code_sms", recipient: targetPhone },
 			"השרת עמוס, מנסה שוב, אנא המתינו..."
 		);
+		
+		hideOverlay();
 
 		if (result.result === "ok") 
 		{
-		  //console.log("Verification code sent to " + targetPhone);
+			alert("בשניות הקרובות תתקבל הודעה עם קוד אימות במכשיר הטלפון הנייד שלך, יש להזין את הקוד במקום המיועד לכך");
+			console.log("Verification code sent to " + targetPhone);
 		} 
 		else 
 		{
-		  console.log("ERROR: sendSmsVerification() failed, result:" + JSON.stringify(result));
+			alert("שליחת הודעת האימות אל המספר " + targetPhone + " נכשלה! יש לבדוק את המספר ולנסות שנית.");
+			console.log("ERROR: sendSmsVerification() failed, result:" + JSON.stringify(result));
 		}
 	  } 
 	  catch (error) 
@@ -870,7 +630,7 @@
 		{
 			sendSmsVerification();
 			
-			// disable the button and make it a counter from 20 to 1 (20 seconds) then allow to send another verification code
+			// disable the button and make it a counter from 20 to 1 (20 seconds) then allow to send another verification code ???
 		}
 		catch(error)
 		{
@@ -879,6 +639,455 @@
 	}
 
 	</script>
+
+
+	<style>
+
+		*
+		{
+			box-sizing: border-box;
+			font-family: Arial, sans-serif;
+		}
+
+		body
+		{
+			margin: 0;
+			padding: 15px;
+			background: #f5f5f5;
+			color: #222;
+		}
+
+		.container
+		{
+			max-width: 500px;
+			margin: auto;
+		}
+
+		/* LOGO & WELCOME TEXT */
+
+		.logo
+		{
+			display: block;
+			/*   max-width: 180px; */
+			width: 100%;
+			margin: 0 auto 15px auto;
+		}
+
+		.welcome-text
+		{
+			text-align: center;
+			font-size: 32px;
+			font-weight: bold;
+			margin-bottom: 8px;
+		}
+
+		.welcome-link
+		{
+			text-align: center;
+			font-size: 16px;
+			margin-bottom: 15px;
+		}
+
+		.welcome-link a
+		{
+			color: #1d7c45;
+		}
+
+		/* LOADING OVERLAY */
+
+		#g_loading_overlay
+		{
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.5);
+			z-index: 1000;
+			justify-content: center;
+			align-items: flex-start;
+		}
+
+		#g_loading_overlay .loading-box
+		{
+			background: white;
+			border-radius: 16px;
+			padding: 30px 40px;
+			font-size: 20px;
+			font-weight: bold;
+			color: #1d7c45;
+			margin-top: 20px;
+		}
+
+		/* PRODUCTS - all products live inside one big merged card, each product
+		   is only bounded by a thin border, and two products sit side by side (2 per row) */
+
+		#g_products_div
+		{
+			background: white;
+			border-radius: 12px;
+			padding: 10px;
+			box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px;
+		}
+
+		.product-card
+		{
+			width: calc(50% - 4px);
+			border: 1px solid #ddd;
+			border-radius: 10px;
+			padding: 8px;
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+		}
+
+		.product-title
+		{
+			font-size: 15px;
+			font-weight: bold;
+		}
+
+		.product-description
+		{
+			font-size: 12px;
+			color: #666;
+		}
+
+		/* NEW: bottom row of the card - image on one side, price/qty/total complex
+		   on the other side. The card's height is driven by the image's height. */
+
+		.product-bottom-row
+		{
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-top: 4px;
+		}
+
+		.product-image
+		{
+			width: 100px;
+			height: 100px;
+			object-fit: cover;
+			border-radius: 8px;
+			flex-shrink: 0;
+		}
+
+		/* price above the quantity box, total below it, all stacked and centered,
+		   filling the remaining space next to the image */
+
+		.price-qty-total
+		{
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			gap: 4px;
+			flex: 1;
+			min-width: 0;
+		}
+
+		.price
+		{
+			font-size: 14px;
+			font-weight: bold;
+			color: #1d7c45;
+			white-space: nowrap;
+		}
+
+		.quantity-box
+		{
+			display: flex;
+			align-items: center;
+			gap: 5px;
+		}
+
+		.quantity-box button
+		{
+			width: 28px;
+			height: 28px;
+			border: none;
+			border-radius: 7px;
+			background: #1d7c45;
+			color: white;
+			font-size: 18px;
+			cursor: pointer;
+			line-height: 1;
+		}
+
+		.quantity-box input
+		{
+			width: 44px;
+			height: 28px;
+			text-align: center;
+			font-size: 14px;
+			border: 1px solid #ccc;
+			border-radius: 7px;
+			padding: 0;
+		}
+
+		.total
+		{
+			font-size: 13px;
+			font-weight: bold;
+			white-space: nowrap;
+		}
+
+		/* FORM */
+
+		.form-card
+		{
+			background: white;
+			border-radius: 16px;
+			padding: 18px;
+			box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+			margin-bottom: 20px;
+		}
+
+		.form-group
+		{
+			margin-bottom: 18px;
+		}
+
+		/* NEW: row layout for placing two form-groups side by side */
+		.form-row
+		{
+			display: flex;
+			gap: 12px;
+		}
+
+		.form-row .form-group
+		{
+			flex: 1;
+			margin-bottom: 18px;
+		}
+
+		label
+		{
+			display: block;
+			margin-bottom: 8px;
+			font-weight: bold;
+			font-size: 15px;
+		}
+
+		input,
+		select,
+		textarea
+		{
+			width: 100%;
+			padding: 12px;
+			border-radius: 12px;
+			border: 1px solid #ccc;
+			font-size: 16px;
+			background: white;
+		}
+
+		textarea
+		{
+			resize: vertical;
+		}
+
+		.info-text
+		{
+			font-size: 14px;
+			color: #666;
+			line-height: 1.5;
+			margin-top: -5px;
+			margin-bottom: 20px;
+		}
+
+		.main-button
+		{
+			width: 100%;
+			height: 52px;
+			border: none;
+			border-radius: 14px;
+			background: #1d7c45;
+			color: white;
+			font-size: 18px;
+			font-weight: bold;
+			cursor: pointer;
+		}
+
+		.payment-total
+		{
+			background: #1d7c45;
+			color: white;
+			padding: 18px;
+			border-radius: 16px;
+			text-align: center;
+			font-size: 24px;
+			font-weight: bold;
+			margin-bottom: 20px;
+		}
+
+		.label-note
+		{
+			font-size: 12px;
+			font-weight: normal;
+			color: #999;
+		}
+
+		.checkbox-group
+		{
+			display: flex;
+			align-items: flex-start;
+			gap: 10px;
+			margin-bottom: 18px;
+		}
+
+		.checkbox-group input[type="checkbox"]
+		{
+			width: 22px;
+			height: 22px;
+			min-width: 22px;
+			margin-top: 2px;
+			cursor: pointer;
+			accent-color: #1d7c45;
+			border-radius: 5px;
+			padding: 0;
+		}
+
+		.checkbox-group label
+		{
+			font-size: 14px;
+			font-weight: normal;
+			margin-bottom: 0;
+			cursor: pointer;
+			line-height: 1.5;
+		}
+		
+		.delivery-date-info-text
+		{
+			background: #eaf6ef;
+			border-right: 4px solid #1d7c45;
+			border-radius: 10px;
+			padding: 12px 14px;
+			margin-bottom: 18px;
+			font-size: 13px;
+			color: #2d5a3d;
+			line-height: 1.7;
+		}
+
+		/* NEW: separators between the logical sections of the form, and a row layout for the coupon input+button */
+
+		.section-divider
+		{
+			border: none;
+			border-top: 1px dashed #ccc;
+			margin: 22px 0;
+		}
+
+		.input-with-button
+		{
+			display: flex;
+			gap: 8px;
+		}
+
+		.input-with-button input
+		{
+			flex: 1;
+		}
+
+		.input-with-button button
+		{
+			white-space: nowrap;
+			padding: 0 14px;
+			border: none;
+			border-radius: 12px;
+			background: #1d7c45;
+			color: white;
+			font-size: 15px;
+			font-weight: bold;
+			cursor: pointer;
+		}
+
+		/* NEW: nicer styling for the discount badge */
+		.discount-badge
+		{
+			display: inline-block;
+			background: #eaf6ef;
+			color: #1d7c45;
+			font-weight: bold;
+			padding: 4px 12px;
+			border-radius: 20px;
+			font-size: 14px;
+		}
+
+		/* NEW: phone number box (16 chars) and verification code box (8 chars), placed side by side with the "send code" button */
+
+		.phone-input
+		{
+			width: calc(16ch + 20px);
+			flex: none;
+			padding: 10px 8px;
+		}
+
+		.verification-input
+		{
+			width: calc(8ch + 20px);
+			flex: none;
+			padding: 10px 8px;
+		}
+
+		/* NEW: shortened coupon input box, and a read-only "discount" box placed to its left, next to the "החל קופון" button */
+
+		.coupon-input
+		{
+			width: calc(10ch + 20px);
+			flex: none;
+			padding: 10px 8px;
+		}
+
+		.discount-input
+		{
+			width: calc(8ch + 20px);
+			flex: none;
+			padding: 10px 8px;
+			text-align: center;
+			font-weight: bold;
+			color: #1d7c45;
+			background: #eaf6ef;
+			cursor: default;
+		}
+
+		/* NEW: two side-by-side clickable "button-cards" for choosing the delivery method (no radio inputs) */
+
+		.delivery-method-options
+		{
+			display: flex;
+			gap: 10px;
+			background-color: yellow;
+			padding: 8px;
+			border-radius: 14px;
+		}
+
+		.delivery-method-option
+		{
+			flex: 1;
+			text-align: center;
+			background: white;
+			border: 2px solid #ccc;
+			border-radius: 12px;
+			padding: 8px 6px;
+			font-size: 14px;
+			font-weight: normal;
+			cursor: pointer;
+			margin-bottom: 0;
+			line-height: 1.3;
+			user-select: none;
+		}
+
+		.delivery-method-option.selected
+		{
+			border-color: #1d7c45;
+			background: #eaf6ef;
+			font-weight: bold;
+			color: #1d7c45;
+		}
+
+	</style>
 	
 </head>
 
@@ -891,54 +1100,125 @@
 
 	<!-- LOGO & WELCOME TEXT -->
 	<div class="container">
-		<img src="https://i.ibb.co/KcpPMGxL/logo-medium.png" alt="לוגו רומיה ותמר" class="logo"> <!-- https://i.ibb.co/2L4HRRz/logo-medium.png -->
+		<img src="https://beensman.github.io/rnt-dev/logo_medium.png" alt="לוגו רומיה ותמר" class="logo"> <!-- https://i.ibb.co/2L4HRRz/logo-medium.png -->
 		<div class="welcome-text">ברוכים הבאים לחנות של רומיה ותמר</div>
 		<div class="welcome-link"><a href="https://www.rumyah-and-tamar.com/">מוצרים שלא קיימים במלאי לא מוצגים כאן, לצפיה בכל המוצרים שלנו לחצו כאן</a></div>
 	</div>
 
+	<!-- PRODUCTS -->
 	<div class="container" id="g_products_div">
 
 	</div>
-	
+
 	<div class="container">
-		
-		<!-- coupon -->
-
-		<div class="form-group">
-			<label>קוד קופון במידה וישנו (ההנחה תתעדכן לאחר אימות מספר טלפון)</label>
-			<input type="text" id="g_coupon_code_input">
-		</div>
-
-		<div class="form-group">
-			הנחה <span id="g_discount_text">0 ש"ח</span>
-		</div>
-
-		<!-- TOTAL -->
-
-		<div class="payment-total">
-			סה"כ לתשלום: <span id="g_grand_total">0</span> ש"ח
-		</div>
-
-		<!-- FORM -->
 
 		<div class="form-card">
 
-			<div class="form-group">
-				<label>בחרו נקודה לאיסוף עצמי <span class="label-note">(לאחר ביצוע ההזמנה נשלח אליכם פרטים מלאים)</span></label>
+			<!-- ==== SECTION 1: terms, phone verification, coupon ==== -->
 
-				<select id="g_pickup_points_select" onchange="onPickupPointChanged(this);" style="background-color: yellow;">
-					</option>
-				</select>
-			</div>
-
-			<div class="delivery-date-info-text">
-			שימו לב: מועד האספקה הקרוב הוא יום שישי ה 24.06.2026. במועד האספקה הקרוב יסופקו הזמנות ששולמו עד ליום חמישי בשעה 04:00. הזמנות ששולמו לאחר מכן יסופקו במועד האספקה הבא.
+			<div class="checkbox-group">
+				<input type="checkbox" id="g_terms_checkbox"><label for="g_terms_checkbox">קראתי ואני מסכים ומקבל את התקנון ותנאי השימוש באתר.</label>
 			</div>
 
 			<div class="form-group">
-				<label>הערות לקוח</label>
-				<textarea rows="4" id="g_customer_comments"></textarea>
+				<label>מספר טלפון ישראלי</label>
+				<div class="input-with-button">
+					<input type="text" id="g_phone_input" class="phone-input">
+					<button onclick="on_click_send_verification_code();">שלחו לי קוד</button>
+					<input type="text" id="g_verification_code" class="verification-input" placeholder="קוד אימות">
+				</div>
 			</div>
+			
+			<!--
+			<div class="info-text">
+				המערכת תשלח קוד אימות בהודעת טקסט אל המספר שהוזן,
+				אנא וודאו כי המספר נכון
+			</div>
+			-->
+
+			<div class="form-group">
+				<label>קוד קופון</label>
+				<div class="input-with-button">
+					<input type="text" id="g_coupon_code_input" class="coupon-input">
+					<button onclick="on_apply_coupon_click();">החל קופון</button>
+					<input type="text" id="g_discount_text" class="discount-input" placeholder="הנחה" value="0 ש&quot;ח" readonly>
+				</div>
+			</div>
+
+			<!-- TOTAL AFTER DISCOUNT -->
+			<div class="payment-total">
+				סה"כ לתשלום לאחר הנחה: <span id="g_grand_total">0</span> ש"ח
+			</div>
+
+			<hr class="section-divider">
+
+			<!-- ==== SECTION 2: delivery method selection ==== -->
+
+			<div class="form-group">
+				<div class="delivery-method-options" id="g_delivery_method_options">
+					<div class="delivery-method-option" data-value="pickup" onclick="onDeliveryMethodChanged(this);">איסוף עצמי ליד הבית (0 ש"ח)</div>
+					<div class="delivery-method-option" data-value="home_delivery" onclick="onDeliveryMethodChanged(this);">משלוח עד הבית (30 ש"ח)</div>
+				</div>
+			</div>
+
+			<hr class="section-divider">
+
+			<!-- ==== SECTION 3: pickup point OR home delivery address, shown according to the selection above ==== -->
+
+			<div id="g_pickup_section" style="display:none;">
+
+				<div class="form-group">
+					<label>בחרו נקודה לאיסוף עצמי <span class="label-note">(לאחר ביצוע ההזמנה נשלח אליכם פרטים מלאים)</span></label>
+
+					<select id="g_pickup_points_select" onchange="onPickupPointChanged(this);" style="background-color: yellow;">
+						</option>
+					</select>
+				</div>
+
+				<div class="delivery-date-info-text">
+				שימו לב: מועד האספקה הקרוב הוא יום שישי ה 24.06.2026. במועד האספקה הקרוב יסופקו הזמנות ששולמו עד ליום חמישי בשעה 04:00. הזמנות ששולמו לאחר מכן יסופקו במועד האספקה הבא.
+				</div>
+
+			</div>
+
+			<div id="g_delivery_section" style="display:none;">
+
+				<div class="form-row">
+					<div class="form-group">
+						<label>עיר</label>
+						<select id="g_city_select" style="background-color: yellow;">
+							<option value="not_selected">יש לבחור עיר</option>
+						</select>
+					</div>
+
+					<div class="form-group">
+						<label>רחוב</label>
+						<input type="text" id="g_street_input">
+					</div>
+				</div>
+
+				<div class="form-row">
+					<div class="form-group">
+						<label>מספר בית</label>
+						<input type="text" id="g_house_number_input">
+					</div>
+
+					<div class="form-group">
+						<label>מספר דירה</label>
+						<input type="text" id="g_apartment_number_input">
+					</div>
+				</div>
+
+			</div>
+
+			<hr class="section-divider">
+
+			<!-- TOTAL INCLUDING SHIPPING -->
+			<div class="payment-total">
+				סה"כ לתשלום כולל משלוח: <span id="g_grand_total_with_shipping">0</span> ש"ח
+			</div>
+
+			<!-- ==== SECTION 4: customer details, comments, opt-ins, submit ==== -->
 
 			<div class="form-group">
 				<label>שם מלא</label>
@@ -946,26 +1226,8 @@
 			</div>
 
 			<div class="form-group">
-				<label>מספר טלפון ישראלי</label>
-				<div style="display:flex; gap:8px;">
-					<input type="text" id="g_phone_input" style="flex:1;">
-					<button onclick="on_click_send_verification_code();" style="white-space:nowrap; padding:0 14px; border:none; border-radius:12px; background:#1d7c45; color:white; font-size:15px; font-weight:bold; cursor:pointer;">שלחו לי קוד</button>
-				</div>
-			</div>
-
-			<div class="info-text">
-				המערכת תשלח קוד אימות בהודעת טקסט אל המספר שהוזן,
-				אנא וודאו כי המספר נכון
-			</div>
-
-			<div class="form-group">
-				<label>קוד אימות</label>
-				<input type="text" id="g_verification_code">
-			</div>
-
-			<div class="checkbox-group">
-				<input type="checkbox" id="g_terms_checkbox"><label for="g_terms_checkbox">קראתי ואני מסכים ומקבל את התקנון ותנאי השימוש באתר.</label>
-				
+				<label>הערות לקוח</label>
+				<textarea rows="4" id="g_customer_comments"></textarea>
 			</div>
 
 			<div class="checkbox-group">
@@ -977,13 +1239,6 @@
 				<input type="checkbox" id="g_marketing_opt_in_checkbox">
 				<label for="g_marketing_opt_in_checkbox">ברצוני לקבל מידע על מוצרים חדשים ומבצעים.</label>
 			</div>
-
-			<!--
-			<div class="form-group">
-				<label>כתובת מייל למשלוח חשבונית</label>
-				<input type="email" id="g_customer_email">
-			</div>
-			-->
 
 			<button class="main-button" id="g_main_button" onclick="on_main_button_click(this);">
 				מעבר אל עמוד התשלום
