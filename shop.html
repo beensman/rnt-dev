@@ -22,9 +22,15 @@
 	 * from the copyright holder.
 	 */
  
+	var g_work_mode = "dev"; // "dev"  or  "production"
+	
 	var g_server_url = "";
 	
+	var g_configuration_data_from_server = "";
+	
 	var g_show_categories = 0;
+	
+	var g_categories_data_from_server;
 
 	// NEW: null = show the categories grid (root) if g_show_categories is 1, or "show all products" if g_show_categories is 0.
 	// Any other value = the category_code currently selected, whose products are shown.
@@ -36,7 +42,11 @@
 	var g_cart_quantities = {};
 	
 	var g_products_data_from_server; 
+	
 	var g_pickup_points_data_from_server;
+	
+	var g_delivery_cities_data_from_server;
+	
 	var g_order = 
 	{
 		products: [],  // empty, populate later { product_code, amount }
@@ -99,69 +109,6 @@
 	}
 	
 		
-	async function update_inventory()
-	{
-	  try
-	  {
-		const response = await fetch(g_server_url,
-		{
-		  method: "POST",
-		  headers: { "Content-Type": "text/plain;charset=utf-8" },
-		  body: JSON.stringify({ action: "get_inventory" })
-		});
-
-		const result = await response.json();
-
-		if (result.result !== "ok")
-		{
-		  console.error("update_inventory() failed:", result.message);
-		  return;
-		}
-
-		result.data.forEach(item =>
-		{
-		  // NEW: keep the stock number stored in g_products_data_from_server in sync too,
-		  // so categories/products that are not currently on screen still have correct stock.
-		  const storedProduct = g_products_data_from_server && g_products_data_from_server.data
-			? g_products_data_from_server.data.find(p => p.product_code === item.product_code)
-			: null;
-		  if (storedProduct)
-		  {
-			storedProduct.amount_in_stock = item.amount_in_stock;
-		  }
-
-		  const card  = document.querySelector(`.product-card[data-code="${item.product_code}"]`);
-		  if (!card) return;
-
-		  const input = card.querySelector(".quantity-input");
-		  const stock = parseInt(item.amount_in_stock, 10);
-
-		  // Update the max attribute
-		  input.max = stock;
-
-		  // If the user already selected more than what's now in stock, clamp it down
-		  const current = parseInt(input.value, 10);
-		  if (current > stock)
-		  {
-			input.value = stock;
-			const unitPrice = parseInt(card.querySelector(".base-price").value, 10);
-			card.querySelector(".total-price").innerText = stock * unitPrice;
-			input.style.backgroundColor = stock > 0 ? "yellow" : "white";
-			g_cart_quantities[item.product_code] = stock;
-			updateGrandTotal();
-			updateCart();
-		  }
-		});
-	  }
-	  catch (err)
-	  {
-		console.error("update_inventory() failed:", err);
-	  }
-
-	  // Schedule the next refresh in 60 seconds
-	  //setTimeout(update_inventory, 60 * 1000);
-	}
-
 	async function show_pickup_points()
 	{
 		await get_pickup_points();
@@ -386,11 +333,87 @@
 	}
 
 
+	async function get_configuration_data()
+	{
+	  try 
+	  {
+		console.log("get_configuration_data()");
+		
+		const response = await fetch(g_server_url, 
+		{
+		  method: "POST",
+		  headers: {
+          // Use text/plain to avoid a complex CORS preflight OPTIONS request
+          "Content-Type": "text/plain;charset=utf-8" 
+		  },
+		  body: JSON.stringify({ action: "get_configuration_data" })
+		});
+
+		g_configuration_data_from_server = await response.json();
+		
+		// example response: {"result":"ok","upcoming_delivery_date_text":"שימו לב: מועד האספקה הקרוב הוא יום שישי ה 01.07.2026. במועד האספקה הקרוב יסופקו הזמנות ששולמו עד ליום חמישי ה 30.06.2026 לפנות בוקר. הזמנות ששולמו לאחר מכן יסופקו במועד האספקה הבא.","show_categories":"1","upcoming_courier_delivery_date_text":"משלוחים עד הבית יתבצעו ביום חמישי 2026-07-20 משעה 08:00 ועד שעה 21:00.","minimum_order_price_for_courier_delivery_to_home":"99","courier_delivery_to_home_price_for_customers_including_vat":"34"}
+
+		if (g_configuration_data_from_server.result != "ok") 
+		{
+		  console.log("ERROR: get_configuration_data() failed.");
+		  console.log(JSON.stringify(g_configuration_data_from_server));
+		}
+		
+		g_show_categories = parseInt(g_configuration_data_from_server.show_categories);
+		document.getElementById('g_pickup_delivery_date_info').innerHTML = g_configuration_data_from_server.upcoming_delivery_date_text;
+		document.getElementById('g_courier_delivery_date_info').innerHTML = g_configuration_data_from_server.upcoming_courier_delivery_date_text;
+	  } 
+	  catch (error) 
+	  {
+		console.log("get_configuration_data() failed: catch (error). ");
+		console.error("Request failed", error);
+	  }
+	}
+
+
+
+	async function get_categories()
+	{
+	  try 
+	  {
+		console.log("get_categories()");
+		
+		const response = await fetch(g_server_url, 
+		{
+		  method: "POST",
+		  headers: {
+          // Use text/plain to avoid a complex CORS preflight OPTIONS request
+          "Content-Type": "text/plain;charset=utf-8" 
+		  },
+		  body: JSON.stringify({ action: "get_categories" })
+		});
+
+		g_categories_data_from_server = await response.json();
+		
+		// example response: {"result":"ok","records":{"headers":["category_code","category_name","parent_category","hide_category_and_products","thumbnail_image_file"],"rows":[["fruits","ירקות","vegi","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegetables","פירות","vegi","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["frozen","קפואים","","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegi","מהצומח","","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"]]}}
+
+		if (g_configuration_data_from_server.result != "ok") 
+		{
+		  console.log("ERROR: get_categories() failed.");
+		  console.log(JSON.stringify(g_categories_data_from_server));
+		}
+	  } 
+	  catch (error) 
+	  {
+		console.log("get_categories() failed: catch (error). ");
+		console.error("Request failed", error);
+	  }
+	}
+
+
 	function getServerUrl() 
 	{
 		const xhr = new XMLHttpRequest();
 		const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a chached version
-		xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+		if(g_work_mode == "dev")
+			xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+		else
+			xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
 		xhr.send();
 		if (xhr.status === 200) 
 		{
@@ -447,48 +470,43 @@
 		
 		console.log(g_server_url);
 		
-		await Promise.all([show_products(), show_pickup_points(), get_delivery_date_text()]);
+		await Promise.all([get_configuration_data(), get_categories(), show_products(), show_pickup_points(), get_delivery_cities()]);
 		
-		//await show_products();
-		//await show_pickup_points();
-		//await get_delivery_date_text();
 		hideOverlay();
 		
 		fill_coupon_code_from_url();
-		
-		//update_inventory();
 		
 		// set timer to reload the page after 6 hours - in case the user left the web site open for a long time, we need to make sure he get the updated prices and stocks
 		setTimeout(on_page_load, 21600000); // 6*60*60*1000=21600000
 	}
 
 
-	async function get_delivery_date_text()
+	async function get_delivery_cities()
 	{
 	  try
 	  {
-		console.log("get_delivery_date_text()");
+		console.log("get_delivery_cities()");
 		
 		const response = await fetch(g_server_url,
 		{
 		  method: "POST",
 		  headers: { "Content-Type": "text/plain;charset=utf-8" },
-		  body: JSON.stringify({ action: "get_delivery_date_text" })
+		  body: JSON.stringify({ action: "get_delivery_cities" })
 		});
 
-		const result = await response.json();
+		g_delivery_cities_data_from_server = await response.json();
+		
+		// example response:  {"result":"ok","records":{"headers":["city_code","city_name"],"rows":[["tel-aviv","תל אביב"],["raanana","רעננה"],["modiin","מודיעין"]]}}
 
 		if (result.result !== "ok")
 		{
-		  console.error("get_delivery_date_text() failed:", result.text);
+		  console.error("get_delivery_cities() failed:", result.text);
 		  return;
 		}
-
-		document.querySelector('.delivery-date-info-text').innerHTML = result.data;
 	  }
 	  catch (err)
 	  {
-		console.error("get_delivery_date_text() failed:", err);
+		console.error("get_delivery_cities() failed:", err);
 	  }
 	}
 
@@ -1522,13 +1540,15 @@
 					</select>
 				</div>
 
-				<div class="delivery-date-info-text">
-				שימו לב: מועד האספקה הקרוב הוא יום שישי ה 24.06.2026. במועד האספקה הקרוב יסופקו הזמנות ששולמו עד ליום חמישי בשעה 04:00. הזמנות ששולמו לאחר מכן יסופקו במועד האספקה הבא.
-				</div>
+				<div class="delivery-date-info-text" id="g_pickup_delivery_date_info"></div>
 
 			</div>
 
 			<div id="g_delivery_section" style="display:none;">
+
+				<!-- NEW: home delivery date/time info box, same style as the pickup one, shown above the city/street row -->
+				<div class="delivery-date-info-text" id="g_courier_delivery_date_info">
+				</div>
 
 				<div class="form-row">
 					<div class="form-group">
