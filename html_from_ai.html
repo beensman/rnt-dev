@@ -22,36 +22,39 @@
 	 * from the copyright holder.
 	 */
  
+	var g_work_mode = "dev"; // "dev"  or  "production"
 	var g_server_url = "";
 	
-	var g_show_categories = 1;
-
-	// NEW: null = show the categories grid (root) if g_show_categories is 1, or "show all products" if g_show_categories is 0.
-	// Any other value = the category_code currently selected, whose products are shown.
-	var g_current_category_code = null;
-
-	// NEW: quantities selected by the user, kept independently from the DOM so they survive
-	// navigating between the categories grid and different categories' product lists.
-	// Keyed by product_code -> quantity (number).
-	var g_cart_quantities = {};
-	
+	var g_configuration_data_from_server = "";
+	var g_categories_data_from_server;
 	var g_products_data_from_server; 
 	var g_pickup_points_data_from_server;
+	var g_delivery_cities_data_from_server;
+
+	var g_show_categories = 0;
+	var g_current_category_code = "root";
+	
 	var g_order = 
 	{
-		products: [],  // empty, populate later { product_code, amount }
+		products: [],  // { product_code, amount }
 		customer_name: null,
 		customer_phone: null,
-		customer_email: null,
+		//customer_email: null,
 		customer_comments: null,
 		pickup_point_code: null,
 		coupon_code: null,
 		verification_code: null,
 		terms_accepted: null,
 		sms_reminder_opt_in: null,
-		marketing_opt_in: null
+		marketing_opt_in: null,
+		delivery_type: "courier_to_home", //   pickup_point   or   courier_to_home
+		customer_city_code: "",
+		customer_street: "",
+		customer_building_number: "",
+		customer_apartment_number: ""
 	};
-	
+
+
 
 	function showOverlay(overlay_text)
 	{
@@ -99,69 +102,6 @@
 	}
 	
 		
-	async function update_inventory()
-	{
-	  try
-	  {
-		const response = await fetch(g_server_url,
-		{
-		  method: "POST",
-		  headers: { "Content-Type": "text/plain;charset=utf-8" },
-		  body: JSON.stringify({ action: "get_inventory" })
-		});
-
-		const result = await response.json();
-
-		if (result.result !== "ok")
-		{
-		  console.error("update_inventory() failed:", result.message);
-		  return;
-		}
-
-		result.data.forEach(item =>
-		{
-		  // NEW: keep the stock number stored in g_products_data_from_server in sync too,
-		  // so categories/products that are not currently on screen still have correct stock.
-		  const storedProduct = g_products_data_from_server && g_products_data_from_server.data
-			? g_products_data_from_server.data.find(p => p.product_code === item.product_code)
-			: null;
-		  if (storedProduct)
-		  {
-			storedProduct.amount_in_stock = item.amount_in_stock;
-		  }
-
-		  const card  = document.querySelector(`.product-card[data-code="${item.product_code}"]`);
-		  if (!card) return;
-
-		  const input = card.querySelector(".quantity-input");
-		  const stock = parseInt(item.amount_in_stock, 10);
-
-		  // Update the max attribute
-		  input.max = stock;
-
-		  // If the user already selected more than what's now in stock, clamp it down
-		  const current = parseInt(input.value, 10);
-		  if (current > stock)
-		  {
-			input.value = stock;
-			const unitPrice = parseInt(card.querySelector(".base-price").value, 10);
-			card.querySelector(".total-price").innerText = stock * unitPrice;
-			input.style.backgroundColor = stock > 0 ? "yellow" : "white";
-			g_cart_quantities[item.product_code] = stock;
-			updateGrandTotal();
-			updateCart();
-		  }
-		});
-	  }
-	  catch (err)
-	  {
-		console.error("update_inventory() failed:", err);
-	  }
-
-	  // Schedule the next refresh in 60 seconds
-	  //setTimeout(update_inventory, 60 * 1000);
-	}
-
 	async function show_pickup_points()
 	{
 		await get_pickup_points();
@@ -211,149 +151,37 @@
 		console.error("Request failed", error);
 	  }
 	}
+	
 
-
-	async function show_products()
+	function show_category()
 	{
-		await get_products();
-		render_top_section();
+		show_products();
+		show_categories();
 	}
-
-
-	// NEW: decides whether the top section ("מתחם עליון") should show the categories
-	// grid or the product cards, and renders the right one.
-	function render_top_section()
+	
+	
+	function show_products()
 	{
-		if (g_show_categories === 1 && g_current_category_code === null)
+		if(g_show_categories === 1)
 		{
-			render_categories();
+			// show only products that with parent_category == g_current_category_code
+			// ???
 		}
 		else
 		{
-			render_product_cards();
+			// show all products
+			// ???
 		}
 	}
+	
 
-
-	// NEW: renders the categories grid (2 per row), derived from the unique
-	// category_code values found among the products returned from the server.
-	function render_categories()
+	function show_categories()
 	{
-		const categoriesMap = new Map();
-
-		g_products_data_from_server.data
-			.filter(product => product.show_on_shop === "1")
-			.forEach(product => {
-				if (!categoriesMap.has(product.category_code))
-				{
-					categoriesMap.set(product.category_code,
-					{
-						category_code: product.category_code,
-						category_name: product.category_name,
-						category_image: product.category_image
-					});
-				}
-			});
-
-		document.getElementById('g_products_div').innerHTML = Array.from(categoriesMap.values())
-			.map(category => {
-				return `
-				<div class="category-card" onclick="onCategoryClick('${category.category_code}');">
-					<div class="category-title">${category.category_name}</div>
-					<img src="${category.category_image}" alt="${category.category_name}" class="category-image">
-				</div>`;
-			}).join('');
-
-		updateCart();
-	}
-
-
-	// NEW: called when a category card is clicked - switches the top section to
-	// show only the products that belong to that category.
-	function onCategoryClick(category_code)
-	{
-		g_current_category_code = category_code;
-		render_product_cards();
-	}
-
-
-	// NEW: called from the "back to categories" link shown above the product list
-	// when categories are enabled - returns to the categories grid.
-	function onBackToCategoriesClick()
-	{
-		g_current_category_code = null;
-		render_categories();
-	}
-
-
-	// NEW: renders the product cards (one per row). If categories are enabled,
-	// only products belonging to g_current_category_code are shown, and a "back
-	// to categories" link is added above the list. Quantities are restored from
-	// g_cart_quantities so a selection made earlier is not lost.
-	function render_product_cards()
-	{
-		const filteredProducts = g_products_data_from_server.data.filter(product => {
-			if (product.show_on_shop !== "1") return false;
-
-			if (g_show_categories === 1 && g_current_category_code !== null)
-			{
-				return product.category_code === g_current_category_code;
-			}
-
-			return true;
-		});
-
-		let backButtonHtml = '';
-		if (g_show_categories === 1 && g_current_category_code !== null)
-		{
-			backButtonHtml = `<div class="back-to-categories" onclick="onBackToCategoriesClick();">&#8594; חזרה לקטגוריות</div>`;
-		}
-
-		const cardsHtml = filteredProducts.map(product => {
-
-			const stock = parseInt(product.amount_in_stock, 10);
-			let qty = g_cart_quantities[product.product_code] || 0;
-			if (qty > stock)
-			{
-				qty = stock;
-				g_cart_quantities[product.product_code] = qty;
-			}
-
-			const unitPrice = parseInt(product.product_price_including_vat, 10);
-			const bgColor = qty > 0 ? "yellow" : "white";
-
-			return `
-			<div class="product-card" data-code="${product.product_code}">
-				<div class="product-bottom-row">
-					<a target=_new href="${product.product_page_link}"> <img src="${product.thumbnail_image_file}" alt="${product.product_name}" class="product-image"> </a>
-					<div class="product-details-col">
-						<div class="product-title">${product.product_name}</div>
-						<div class="product-description">${product.product_description}</div>
-						<div class="price-qty-total">
-							<div class="price"> 
-								<span class="unit-price">${product.product_price_including_vat}</span> ש"ח 
-							</div> 
-							<input type="hidden" value="${product.product_price_including_vat}" class="base-price"> 
-							<div class="quantity-box"> 
-								<button onclick="changeQuantity(this, 1);">+</button> 
-								<input type="number" value="${qty}" class="quantity-input" max="${stock}" style="background-color: ${bgColor};" readonly> 
-								<button onclick="changeQuantity(this, -1);">-</button> 
-							</div> 
-							<div class="total"> 
-								סה"כ: <span class="total-price">${qty * unitPrice}</span> ש"ח 
-							</div> 
-						</div>
-					</div>
-				</div>
-			</div>`;
-		}).join('');
-
-		document.getElementById('g_products_div').innerHTML = backButtonHtml + cardsHtml;
-
-		updateCart();
+		// show only categories that with parent_category == g_current_category_code
+		// ???
 	}
 	
-	
+
 	async function get_products()
 	{
 	  try 
@@ -386,11 +214,86 @@
 	}
 
 
+	async function get_configuration_data()
+	{
+	  try 
+	  {
+		console.log("get_configuration_data()");
+		
+		const response = await fetch(g_server_url, 
+		{
+		  method: "POST",
+		  headers: {
+          // Use text/plain to avoid a complex CORS preflight OPTIONS request
+          "Content-Type": "text/plain;charset=utf-8" 
+		  },
+		  body: JSON.stringify({ action: "get_configuration_data" })
+		});
+
+		g_configuration_data_from_server = await response.json();
+		
+		// example response: {"result":"ok","upcoming_delivery_date_text":"שימו לב: מועד האספקה הקרוב הוא יום שישי ה 01.07.2026. במועד האספקה הקרוב יסופקו הזמנות ששולמו עד ליום חמישי ה 30.06.2026 לפנות בוקר. הזמנות ששולמו לאחר מכן יסופקו במועד האספקה הבא.","show_categories":"1","upcoming_courier_delivery_date_text":"משלוחים עד הבית יתבצעו ביום חמישי 2026-07-20 משעה 08:00 ועד שעה 21:00.","minimum_order_price_for_courier_delivery_to_home":"99","courier_delivery_to_home_price_for_customers_including_vat":"34"}
+
+		if (g_configuration_data_from_server.result != "ok") 
+		{
+		  console.log("ERROR: get_configuration_data() failed.");
+		  console.log(JSON.stringify(g_configuration_data_from_server));
+		}
+		
+		g_show_categories = parseInt(g_configuration_data_from_server.show_categories);
+		document.getElementById('g_pickup_delivery_date_info').innerHTML = g_configuration_data_from_server.upcoming_delivery_date_text;
+		document.getElementById('g_courier_delivery_date_info').innerHTML = g_configuration_data_from_server.upcoming_courier_delivery_date_text;
+	  } 
+	  catch (error) 
+	  {
+		console.log("get_configuration_data() failed: catch (error). ");
+		console.error("Request failed", error);
+	  }
+	}
+
+
+	async function get_categories()
+	{
+	  try 
+	  {
+		console.log("get_categories()");
+		
+		const response = await fetch(g_server_url, 
+		{
+		  method: "POST",
+		  headers: {
+          // Use text/plain to avoid a complex CORS preflight OPTIONS request
+          "Content-Type": "text/plain;charset=utf-8" 
+		  },
+		  body: JSON.stringify({ action: "get_categories" })
+		});
+
+		g_categories_data_from_server = await response.json();
+		
+		// example response: {"result":"ok","records":{"headers":["category_code","category_name","parent_category","hide_category_and_products","thumbnail_image_file"],"rows":[["fruits","ירקות","vegi","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegetables","פירות","vegi","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["frozen","קפואים","","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegi","מהצומח","","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"]]}}
+
+		if (g_configuration_data_from_server.result != "ok") 
+		{
+		  console.log("ERROR: get_categories() failed.");
+		  console.log(JSON.stringify(g_categories_data_from_server));
+		}
+	  } 
+	  catch (error) 
+	  {
+		console.log("get_categories() failed: catch (error). ");
+		console.error("Request failed", error);
+	  }
+	}
+
+
 	function getServerUrl() 
 	{
 		const xhr = new XMLHttpRequest();
 		const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a chached version
-		xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+		if(g_work_mode == "dev")
+			xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+		else
+			xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
 		xhr.send();
 		if (xhr.status === 200) 
 		{
@@ -421,20 +324,9 @@
 	}
 
 
-	// NEW: selects "home_delivery" as the default delivery method when the page loads
-	function set_default_delivery_method()
-	{
-		const homeDeliveryCard = document.querySelector('.delivery-method-option[data-value="home_delivery"]');
-		if (homeDeliveryCard)
-		{
-			onDeliveryMethodChanged(homeDeliveryCard);
-		}
-	}
-	
-
 	async function on_page_load()
 	{
-		showOverlay("טוען נתונים מהשרת ...");
+		//showOverlay("טוען נתונים מהשרת ...");
 		
 		set_default_delivery_method();
 		
@@ -447,210 +339,53 @@
 		
 		console.log(g_server_url);
 		
-		await Promise.all([show_products(), show_pickup_points(), get_delivery_date_text()]);
+		//await Promise.all([get_configuration_data(), get_categories(), get_products(), show_pickup_points(), get_delivery_cities()]);
 		
-		//await show_products();
-		//await show_pickup_points();
-		//await get_delivery_date_text();
+		show_category();
+		
+		if(g_order.delivery_type == "pickup_point")
+			document.getElementById('g_pickup_section').style.display = 'block'; // why is it not working?
+		else
+			document.getElementById('g_delivery_section').style.display = 'block';
+		
 		hideOverlay();
 		
 		fill_coupon_code_from_url();
-		
-		//update_inventory();
 		
 		// set timer to reload the page after 6 hours - in case the user left the web site open for a long time, we need to make sure he get the updated prices and stocks
 		setTimeout(on_page_load, 21600000); // 6*60*60*1000=21600000
 	}
 
 
-	async function get_delivery_date_text()
+	async function get_delivery_cities()
 	{
 	  try
 	  {
-		console.log("get_delivery_date_text()");
+		console.log("get_delivery_cities()");
 		
 		const response = await fetch(g_server_url,
 		{
 		  method: "POST",
 		  headers: { "Content-Type": "text/plain;charset=utf-8" },
-		  body: JSON.stringify({ action: "get_delivery_date_text" })
+		  body: JSON.stringify({ action: "get_delivery_cities" })
 		});
 
-		const result = await response.json();
+		g_delivery_cities_data_from_server = await response.json();
+		
+		// example response:  {"result":"ok","records":{"headers":["city_code","city_name"],"rows":[["tel-aviv","תל אביב"],["raanana","רעננה"],["modiin","מודיעין"]]}}
 
-		if (result.result !== "ok")
+		if (g_delivery_cities_data_from_server.result !== "ok")
 		{
-		  console.error("get_delivery_date_text() failed:", result.text);
+		  console.error("get_delivery_cities() failed");
 		  return;
 		}
-
-		document.querySelector('.delivery-date-info-text').innerHTML = result.data;
 	  }
 	  catch (err)
 	  {
-		console.error("get_delivery_date_text() failed:", err);
+		console.error("get_delivery_cities() failed:", err);
 	  }
 	}
 
-
-	function changeQuantity(btn, amount) 
-	{
-		const card = btn.closest('.product-card');
-		const productCode = card.getAttribute('data-code');
-		const input = card.querySelector('.quantity-input');
-		const totalPriceElement = card.querySelector('.total-price');
-		const unitPrice = parseInt(card.querySelector('.base-price').value);
-		
-		let newQuantity = parseInt(input.value) + amount;
-		
-		if (newQuantity < 0) newQuantity = 0;
-		
-		const maxStock = parseInt(input.max);
-		if (newQuantity > maxStock) newQuantity = maxStock;
-		
-		input.value = newQuantity;
-		totalPriceElement.innerText = newQuantity * unitPrice;
-
-		input.style.backgroundColor = newQuantity > 0 ? "yellow" : "white";
-
-		// NEW: persist the quantity so it is not lost when navigating between categories
-		g_cart_quantities[productCode] = newQuantity;
-		
-		updateGrandTotal();
-		updateCart();
-	}
-	
-
-	// CHANGED: now sums over g_cart_quantities + the full product list (instead of scanning
-	// the DOM), so the total is correct even when only one category's cards are on screen.
-	function updateGrandTotal()
-	{
-		let grand = 0;
-
-		for (const product_code in g_cart_quantities)
-		{
-			const qty = g_cart_quantities[product_code];
-			if (qty > 0)
-			{
-				const product = g_products_data_from_server.data.find(p => p.product_code === product_code);
-				if (product)
-				{
-					grand += qty * parseInt(product.product_price_including_vat, 10);
-				}
-			}
-		}
-
-		document.getElementById('g_grand_total').innerText = grand;
-	}
-
-
-	// CHANGED: builds/refreshes the shopping-cart table located between the products
-	// section and the rest of the form. Now reads from g_cart_quantities + the full
-	// product list (instead of scanning the DOM), so it stays correct regardless of
-	// which category's products are currently shown on screen.
-	function updateCart()
-	{
-		const tbody = document.getElementById('g_cart_tbody');
-		if (!tbody) return;
-
-		let rowsHtml = '';
-		let totalSum = 0;
-
-		for (const product_code in g_cart_quantities)
-		{
-			const qty = g_cart_quantities[product_code];
-			if (qty > 0)
-			{
-				const product = g_products_data_from_server.data.find(p => p.product_code === product_code);
-				if (!product) continue;
-
-				const unitPrice = parseInt(product.product_price_including_vat, 10);
-				const lineTotal = qty * unitPrice;
-
-				totalSum += lineTotal;
-
-				rowsHtml += `
-					<tr>
-						<td><img src="${product.thumbnail_image_file}" alt="${product.product_name}" class="cart-item-image"></td>
-						<td>${product.product_name}</td>
-						<td>${qty}</td>
-						<td>${unitPrice}</td>
-						<td>${lineTotal}</td>
-					</tr>`;
-			}
-		}
-
-		if (rowsHtml === '')
-		{
-			tbody.innerHTML = `<tr><td colspan="5" class="cart-empty-row">העגלה ריקה</td></tr>`;
-			return;
-		}
-
-		rowsHtml += `
-			<tr class="cart-total-row">
-				<td colspan="4">סך מחיר המוצרים</td>
-				<td>${totalSum}</td>
-			</tr>`;
-
-		tbody.innerHTML = rowsHtml;
-	}
-
-
-	function onPickupPointChanged(sel)
-	{
-		if (sel.value === "not_selected")
-			sel.style.backgroundColor = "yellow";
-		else
-			sel.style.backgroundColor = "white";
-	}
-
-
-	// NEW: toggles between the "pickup point" section and the "home delivery address" section
-	// depending on the delivery method the user selected. The delivery method is now chosen
-	// by clicking one of the two card-style buttons (no separate radio input elements).
-	// NOTE: this only handles the visual show/hide for now. The actual order-submission
-	// logic (adding 30 ש"ח for home delivery, saving the address fields into g_order, etc.)
-	// will be added in the next stage.
-	function onDeliveryMethodChanged(card)
-	{
-		const optionsBox = document.getElementById('g_delivery_method_options');
-		const deliveryMethod = card.getAttribute('data-value');
-
-		// mark the clicked card as selected, and un-mark its sibling
-		optionsBox.querySelectorAll('.delivery-method-option').forEach(c => c.classList.remove('selected'));
-		card.classList.add('selected');
-
-		// once a choice is made, remove the "not selected yet" highlight from the options box
-		optionsBox.style.backgroundColor = "white";
-
-		const pickupSection = document.getElementById('g_pickup_section');
-		const deliverySection = document.getElementById('g_delivery_section');
-
-		if (deliveryMethod === "pickup")
-		{
-			pickupSection.style.display = "block";
-			deliverySection.style.display = "none";
-		}
-		else if (deliveryMethod === "home_delivery")
-		{
-			pickupSection.style.display = "none";
-			deliverySection.style.display = "block";
-		}
-		else
-		{
-			pickupSection.style.display = "none";
-			deliverySection.style.display = "none";
-		}
-	}
-
-
-	// NEW: placeholder for the "החל קופון" button.
-	// The real validation / discount calculation will be added in a later stage.
-	function on_apply_coupon_click()
-	{
-		console.log("on_apply_coupon_click() - to be implemented in next stage");
-		alert("פונקציונליות החלת הקופון תתווסף בשלב הבא");
-	}
 
 
 	async function create_new_order()
@@ -686,24 +421,6 @@
 		g_order.sms_reminder_opt_in = document.getElementById('g_sms_reminder_checkbox').checked;
 		g_order.marketing_opt_in    = document.getElementById('g_marketing_opt_in_checkbox').checked;
 					
-		g_order.products = [];// Clear the array first to avoid duplicates if the button is clicked multiple times
-
-		// CHANGED: build the order's product list from g_cart_quantities (instead of scanning
-		// the DOM), since not all selected products are necessarily on screen right now.
-		for (const product_code in g_cart_quantities)
-		{
-			const quantity = g_cart_quantities[product_code];
-
-			// Only insert products that the user actually selected (amount > 0)
-			if (quantity > 0)
-			{
-				g_order.products.push({
-					product_code: product_code,
-					amount: quantity
-				});
-			}
-		}
-		
 		//document.getElementById('g_customer_comments').value = JSON.stringify(g_order); // for debug
 		
 		let result = await create_new_order();
@@ -790,43 +507,31 @@
 	}
 
 
-	async function sendSmsVerification() 
-	{
-	  try 
-	  {
-		showOverlay("המערכת שולחת אליך הודעה עם קוד אימות");
-		
-		const targetPhone = document.getElementById('g_phone_input').value
-		
-		const result = await post_to_server_with_busy_retry(
-			{ action: "send_verification_code_sms", recipient: targetPhone },
-			"השרת עמוס, מנסה שוב, אנא המתינו..."
-		);
-		
-		hideOverlay();
-
-		if (result.result === "ok") 
-		{
-			alert("בשניות הקרובות תתקבל הודעה עם קוד אימות במכשיר הטלפון הנייד שלך, יש להזין את הקוד במקום המיועד לכך");
-			console.log("Verification code sent to " + targetPhone);
-		} 
-		else 
-		{
-			alert("שליחת הודעת האימות אל המספר " + targetPhone + " נכשלה! יש לבדוק את המספר ולנסות שנית.");
-			console.log("ERROR: sendSmsVerification() failed, result:" + JSON.stringify(result));
-		}
-	  } 
-	  catch (error) 
-	  {
-		console.log("ERROR: sendSmsVerification() catch error:" + error.toString());
-	  }
-	}
-	
-	function on_click_send_verification_code()
+	async function on_click_send_verification_code()
 	{
 		try
 		{
-			sendSmsVerification();
+			showOverlay("המערכת שולחת אליך הודעה עם קוד אימות");
+			
+			const targetPhone = document.getElementById('g_phone_input').value
+			
+			const result = await post_to_server_with_busy_retry(
+				{ action: "send_verification_code_sms", recipient: targetPhone },
+				"השרת עמוס, מנסה שוב, אנא המתינו..."
+			);
+			
+			hideOverlay();
+
+			if (result.result === "ok") 
+			{
+				alert("בשניות הקרובות תתקבל הודעה עם קוד אימות במכשיר הטלפון הנייד שלך, יש להזין את הקוד במקום המיועד לכך");
+				console.log("Verification code sent to " + targetPhone);
+			} 
+			else 
+			{
+				alert("שליחת הודעת האימות אל המספר " + targetPhone + " נכשלה! יש לבדוק את המספר ולנסות שנית.");
+				console.log("ERROR: sendSmsVerification() failed, result:" + JSON.stringify(result));
+			}
 			
 			// disable the button and make it a counter from 20 to 1 (20 seconds) then allow to send another verification code ???
 		}
@@ -915,187 +620,14 @@
 			margin-top: 20px;
 		}
 
-		/* PRODUCTS / CATEGORIES - all products (or all categories) live inside one big
-		   merged card ("מתחם"). Products: one per row, image on the right side, all
-		   other details stacked to the left of the image. Categories: two per row. */
-
-		#g_products_div
-		{
-			background: white;
-			border-radius: 12px;
-			padding: 10px;
-			box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-			display: flex;
-			flex-wrap: wrap;
-			gap: 8px;
-		}
-
-		.product-card
-		{
-			width: 100%;
-			border: 1px solid #ddd;
-			border-radius: 10px;
-			padding: 8px;
-			display: flex;
-			flex-direction: column;
-			gap: 4px;
-		}
-
-		.product-title
-		{
-			font-size: 15px;
-			font-weight: bold;
-		}
-
-		.product-description
-		{
-			font-size: 12px;
-			color: #666;
-		}
-
-		/* bottom row of the card - image on one side (right, due to RTL + row order),
-		   details column on the other side (left). The card's height is driven by the image's height. */
-
-		.product-bottom-row
-		{
-			display: flex;
-			align-items: center;
-			gap: 10px;
-			margin-top: 4px;
-		}
-
-		.product-image
-		{
-			width: 100px;
-			height: 100px;
-			object-fit: cover;
-			border-radius: 8px;
-			flex-shrink: 0;
-		}
-
-		/* column holding title, description and price/qty/total, placed to the
-		   left of the image (in RTL, the element that appears second in the row
-		   markup is rendered on the left side) */
-
-		.product-details-col
-		{
-			display: flex;
-			flex-direction: column;
-			gap: 4px;
-			flex: 1;
-			min-width: 0;
-		}
-
-		/* price above the quantity box, total below it, all stacked and centered,
-		   filling the remaining space next to the image */
-
-		.price-qty-total
-		{
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			gap: 4px;
-			flex: 1;
-			min-width: 0;
-		}
-
-		.price
-		{
-			font-size: 14px;
-			font-weight: bold;
-			color: #1d7c45;
-			white-space: nowrap;
-		}
-
-		.quantity-box
-		{
-			display: flex;
-			align-items: center;
-			gap: 5px;
-		}
-
-		.quantity-box button
-		{
-			width: 28px;
-			height: 28px;
-			border: none;
-			border-radius: 7px;
-			background: #1d7c45;
-			color: white;
-			font-size: 18px;
-			cursor: pointer;
-			line-height: 1;
-		}
-
-		.quantity-box input
-		{
-			width: 44px;
-			height: 28px;
-			text-align: center;
-			font-size: 14px;
-			border: 1px solid #ccc;
-			border-radius: 7px;
-			padding: 0;
-		}
-
-		.total
-		{
-			font-size: 13px;
-			font-weight: bold;
-			white-space: nowrap;
-		}
-
-		/* NEW: CATEGORIES - two cards per row, title text above the category image */
-
-		.category-card
-		{
-			width: calc(50% - 4px);
-			border: 1px solid #ddd;
-			border-radius: 10px;
-			padding: 10px;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			gap: 8px;
-			cursor: pointer;
-			text-align: center;
-			user-select: none;
-		}
-
-		.category-title
-		{
-			font-size: 15px;
-			font-weight: bold;
-		}
-
-		.category-image
-		{
-			width: 100%;
-			aspect-ratio: 1 / 1;
-			object-fit: cover;
-			border-radius: 8px;
-		}
-
-		/* NEW: "back to categories" link shown above the product list when a category is open */
-
-		.back-to-categories
-		{
-			width: 100%;
-			padding: 8px 14px;
-			background: #eaf6ef;
-			color: #1d7c45;
-			border-radius: 10px;
-			font-size: 14px;
-			font-weight: bold;
-			cursor: pointer;
-			user-select: none;
-			text-align: center;
-		}
 
 		/* SHOPPING CART - middle "מתחם" between the products section and the
 		   rest of the form. Table format: image, product name, qty, unit price, total,
-		   followed by a summary row. */
+		   followed by a summary row.
+		   CHANGED: added margin-bottom equal to margin-top, so the gap below this
+		   מתחם (before the bottom form) matches the gap above it (after the products
+		   section). Without it, the next .container had no margin-top of its own,
+		   so there was no visible spacing between the cart and the form below it. */
 
 		#g_cart_div
 		{
@@ -1104,6 +636,7 @@
 			padding: 10px;
 			box-shadow: 0 2px 10px rgba(0,0,0,0.08);
 			margin-top: 15px;
+			margin-bottom: 15px;
 			overflow-x: auto;
 		}
 
@@ -1410,6 +943,142 @@
 			color: #1d7c45;
 		}
 
+
+		/* PRODUCT CARD */
+
+		.product-card
+		{
+			border: 1px solid #ddd;
+			border-radius: 12px;
+			background: white;
+			padding: 10px;
+			margin-bottom: 12px;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+
+		.product-card-image
+		{
+			width: 100px;
+			height: 100px;
+			object-fit: cover;
+			border-radius: 8px;
+			flex-shrink: 0;
+		}
+
+		.product-card-info
+		{
+			flex: 1;
+		}
+
+		.product-card-name
+		{
+			font-weight: bold;
+			font-size: 16px;
+			margin-bottom: 4px;
+		}
+
+		.product-card-subtitle
+		{
+			font-size: 13px;
+			color: #666;
+			margin-bottom: 8px;
+		}
+
+		.product-card-price-row
+		{
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 6px;
+		}
+
+		.product-card-price
+		{
+			font-weight: bold;
+			font-size: 15px;
+		}
+
+		.qty-control
+		{
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.qty-btn
+		{
+			width: 28px;
+			height: 28px;
+			border: none;
+			border-radius: 8px;
+			background: #1d7c45;
+			color: white;
+			font-size: 16px;
+			font-weight: bold;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 0;
+		}
+
+		.qty-input
+		{
+			width: 40px;
+			padding: 4px;
+			text-align: center;
+			border-radius: 8px;
+		}
+
+		.product-card-total
+		{
+			font-size: 13px;
+			color: #1d7c45;
+			font-weight: bold;
+		}
+
+
+		/* CATEGORIES */
+
+		#g_categories_div
+		{
+			display: grid;
+			grid-template-columns: repeat(5, 1fr);
+			gap: 6px;
+			margin-top: 15px;
+		}
+
+		.category-item
+		{
+			border: 1px solid #ddd;
+			border-radius: 12px;
+			background: white;
+			padding: 6px 2px;
+			width: auto;
+			text-align: center;
+			cursor: pointer;
+			user-select: none;
+		}
+
+		.category-item-image
+		{
+			width: 100%;
+			max-width: 55px;
+			height: 55px;
+			object-fit: cover;
+			border-radius: 8px;
+			margin-bottom: 4px;
+		}
+
+		.category-item-name
+		{
+			font-size: 12px;
+			font-weight: bold;
+			line-height: 1.2;
+		}
+
 	</style>
 	
 </head>
@@ -1429,8 +1098,57 @@
 	</div>
 
 	<!-- PRODUCTS / CATEGORIES (מתחם עליון) -->
-	<div class="container" id="g_products_div">
+	<div class="container" id="g_category_div"> <!-- category contain products and sub categories -->
+		<div id="g_products_div">
+		<!-- product image size is 100 x 100 px -->
+			<!-- example product - start -->
+			<div class="product-card" data-product-code="injera_sour_white">
+				<img src="https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png" alt="הומאדה מצחמה אריגנית" class="product-card-image">
+				<div class="product-card-info">
+					<div class="product-card-name">הומאדה מצחמה אריגנית</div>
+					<div class="product-card-subtitle">מארז המכיל 5 יחידות</div>
+					<div class="product-card-price-row">
+						<span class="product-card-price">50 ש"ח</span>
+						<div class="qty-control">
+							<button class="qty-btn" onclick="onProductQtyChange(this, -1);">-</button>
+							<input type="text" class="qty-input" value="0" readonly>
+							<button class="qty-btn" onclick="onProductQtyChange(this, 1);">+</button>
+						</div>
+					</div>
+					<div class="product-card-total">סה"כ: 0 ש"ח</div>
+				</div>
+			</div>				
+			<!-- example product - end -->
+		</div>
+		<div id="g_categories_div">
+		<!-- category image size is 25 x 25 px -->
+			<!-- example categories - start -->
+			<div class="category-item" data-category-code="legumes" onclick="onCategoryClick(this);">
+				<img src="https://i.ibb.co/0dSgp9x/legumes-thumbnail.png" alt="קטניות" class="category-item-image">
+				<div class="category-item-name">קטניות</div>
+			</div>
 
+			<div class="category-item" data-category-code="fruits_vegetables" onclick="onCategoryClick(this);">
+				<img src="https://i.ibb.co/0dSgp9x/fruits-vegetables-thumbnail.png" alt="פירות וירקות" class="category-item-image">
+				<div class="category-item-name">פירות וירקות</div>
+			</div>
+
+			<div class="category-item" data-category-code="fruits_vegetables" onclick="onCategoryClick(this);">
+				<img src="https://i.ibb.co/0dSgp9x/fruits-vegetables-thumbnail.png" alt="פירות וירקות" class="category-item-image">
+				<div class="category-item-name">פירות וירקות</div>
+			</div>
+
+			<div class="category-item" data-category-code="fruits_vegetables" onclick="onCategoryClick(this);">
+				<img src="https://i.ibb.co/0dSgp9x/fruits-vegetables-thumbnail.png" alt="פירות וירקות" class="category-item-image">
+				<div class="category-item-name">פירות וירקות</div>
+			</div>
+
+			<div class="category-item" data-category-code="dairy" onclick="onCategoryClick(this);">
+				<img src="https://i.ibb.co/0dSgp9x/dairy-thumbnail.png" alt="מוצרי חלב" class="category-item-image">
+				<div class="category-item-name">מוצרי חלב</div>
+			</div>
+			<!-- example categories - end -->
+		</div>
 	</div>
 
 	<!-- SHOPPING CART (מתחם אמצעי) -->
@@ -1517,13 +1235,15 @@
 					</select>
 				</div>
 
-				<div class="delivery-date-info-text">
-				שימו לב: מועד האספקה הקרוב הוא יום שישי ה 24.06.2026. במועד האספקה הקרוב יסופקו הזמנות ששולמו עד ליום חמישי בשעה 04:00. הזמנות ששולמו לאחר מכן יסופקו במועד האספקה הבא.
-				</div>
+				<div class="delivery-date-info-text" id="g_pickup_delivery_date_info"></div>
 
 			</div>
 
 			<div id="g_delivery_section" style="display:none;">
+
+				<!-- NEW: home delivery date/time info box, same style as the pickup one, shown above the city/street row -->
+				<div class="delivery-date-info-text" id="g_courier_delivery_date_info">
+				</div>
 
 				<div class="form-row">
 					<div class="form-group">
