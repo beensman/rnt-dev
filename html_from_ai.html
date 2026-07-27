@@ -156,31 +156,232 @@
 	function show_category()
 	{
 		show_products();
-		show_categories();
-	}
-	
-	
-	function show_products()
-	{
+		
 		if(g_show_categories === 1)
-		{
-			// show only products that with parent_category == g_current_category_code
-			// ???
-		}
-		else
-		{
-			// show all products
-			// ???
-		}
+			show_categories();
 	}
 	
 
-	function show_categories()
+	function show_products()
 	{
-		// show only categories that with parent_category == g_current_category_code
-		// ???
+		if (!g_products_data_from_server || !g_products_data_from_server.data)
+			return;
+
+		const rows = g_products_data_from_server.data.rows;
+
+		const products_to_show = rows.filter(row =>
+		{
+			if (g_show_categories === 1)
+				return row[1] === g_current_category_code; // parent_category_code
+			else
+				return true; // show all products regardless of category
+		});
+
+		if (products_to_show.length === 0)
+		{
+			//document.getElementById('g_products_div').innerHTML =	'<div style="text-align:center; color:#999; padding:20px;">אין מוצרים להצגה בקטגוריה זו</div>';
+			document.getElementById('g_products_div').innerHTML =	'<div style="text-align:center; color:#999; padding:20px;"></div>';
+			return;
+		}
+
+		const products_html = products_to_show.map(row =>
+		{
+			const product_code            = row[0];
+			// row[1] is parent_category_code, used only for filtering above
+			const product_name            = row[2];
+			const product_description     = row[3];
+			const product_price           = parseFloat(row[4]);
+			const amount_in_stock         = parseInt(row[5]);
+			const thumbnail_image_file    = row[6];
+			const product_page_link       = row[7];
+
+			const current_qty = get_product_qty_in_order(product_code);
+			const line_total  = (product_price * current_qty).toFixed(0);
+
+			const out_of_stock_note = amount_in_stock <= 0
+				? '<div style="color:#c0392b; font-size:12px; margin-top:4px;">אזל מהמלאי</div>'
+				: '';
+
+			// NEW: if a product_page_link exists, wrap the image and name in an <a> tag
+			const image_html = product_page_link
+				? `<a href="${product_page_link}" target="_blank" rel="noopener"><img src="${thumbnail_image_file}" alt="${product_name}" class="product-card-image"></a>`
+				: `<img src="${thumbnail_image_file}" alt="${product_name}" class="product-card-image">`;
+
+			const name_html = product_page_link
+				? `<a href="${product_page_link}" target="_blank" rel="noopener" style="color:inherit; text-decoration:none;">${product_name}</a>`
+				: product_name;
+
+			return `
+				<div class="product-card" data-product-code="${product_code}">
+					${image_html}
+					<div class="product-card-info">
+						<div class="product-card-name">${name_html}</div>
+						<div class="product-card-subtitle">${product_description}</div>
+						<div class="product-card-price-row">
+							<span class="product-card-price">${product_price} ש"ח</span>
+							<div class="qty-control">
+								<button class="qty-btn" onclick="on_product_quantity_change('${product_code}', -1);" ${amount_in_stock <= 0 ? 'disabled' : ''}>-</button>
+								<input type="text" class="qty-input" value="${current_qty}" readonly>
+								<button class="qty-btn" onclick="on_product_quantity_change('${product_code}', 1);" ${amount_in_stock <= 0 ? 'disabled' : ''}>+</button>
+							</div>
+						</div>
+						<div class="product-card-total">סה"כ: ${line_total} ש"ח</div>
+						${out_of_stock_note}
+					</div>
+				</div>`;
+		}).join('');
+
+		document.getElementById('g_products_div').innerHTML = products_html;
 	}
 	
+
+	// helper: looks up the current ordered quantity for a given product_code in g_order.products
+	function get_product_qty_in_order(product_code)
+	{
+		const existing = g_order.products.find(p => p.product_code === product_code);
+		return existing ? existing.amount : 0;
+	}	
+	
+	
+	function on_product_quantity_change(product_code, amount_to_add)
+	{
+		// look up the current stock level so we don't let the qty exceed it
+		const rows = (g_products_data_from_server && g_products_data_from_server.data)
+			? g_products_data_from_server.data.rows
+			: [];
+		const product_row = rows.find(row => row[0] === product_code);
+		const amount_in_stock = product_row ? parseInt(product_row[5]) : 0;
+
+		const existing = g_order.products.find(p => p.product_code === product_code);
+		const current_qty = existing ? existing.amount : 0;
+
+		let new_qty = current_qty + amount_to_add;
+		if (new_qty < 0) new_qty = 0;
+		if (new_qty > amount_in_stock) new_qty = amount_in_stock;
+
+		if (new_qty === 0)
+		{
+			// remove from order entirely if it exists
+			if (existing)
+				g_order.products = g_order.products.filter(p => p.product_code !== product_code);
+		}
+		else if (existing)
+		{
+			existing.amount = new_qty;
+		}
+		else
+		{
+			g_order.products.push({ product_code: product_code, amount: new_qty });
+		}
+
+		// re-render the product cards so the qty input / line total reflect the change
+		show_products();
+
+		show_cart();
+	}	
+	
+		
+	function show_cart()
+	{
+		const cart_tbody = document.getElementById('g_cart_tbody');
+
+		if (!g_order.products || g_order.products.length === 0)
+		{
+			cart_tbody.innerHTML = '<tr><td colspan="5" class="cart-empty-row">העגלה ריקה</td></tr>';
+			document.getElementById('g_grand_total').innerText = "0";
+			return;
+		}
+
+		const rows = (g_products_data_from_server && g_products_data_from_server.data)
+			? g_products_data_from_server.data.rows
+			: [];
+
+		let grand_total = 0;
+
+		const items_html = g_order.products.map(order_item =>
+		{
+			const product_row = rows.find(row => row[0] === order_item.product_code);
+
+			if (!product_row)
+				return ''; // product not found (shouldn't normally happen)
+
+			const product_code         = product_row[0];
+			const product_name         = product_row[2];
+			const product_price        = parseFloat(product_row[4]);
+			const thumbnail_image_file = product_row[6];
+
+			const qty        = order_item.amount;
+			const line_total = (product_price * qty).toFixed(0);
+
+			grand_total += product_price * qty;
+
+			return `
+				<tr>
+					<td><img src="${thumbnail_image_file}" alt="${product_name}" class="cart-item-image"></td>
+					<td>${product_name}</td>
+					<td>
+						<div class="qty-control" style="justify-content:center;">
+							<button class="qty-btn" onclick="on_product_quantity_change('${product_code}', -1);">-</button>
+							<input type="text" class="qty-input" value="${qty}" readonly>
+							<button class="qty-btn" onclick="on_product_quantity_change('${product_code}', 1);">+</button>
+						</div>
+					</td>
+					<td>${product_price} ש"ח</td>
+					<td>${line_total} ש"ח</td>
+				</tr>`;
+		}).join('');
+
+		grand_total = grand_total.toFixed(0);
+
+		const total_row_html = `
+			<tr class="cart-total-row">
+				<td></td>
+				<td>סה"כ</td>
+				<td></td>
+				<td></td>
+				<td>${grand_total} ש"ח</td>
+			</tr>`;
+
+		cart_tbody.innerHTML = items_html + total_row_html;
+
+		document.getElementById('g_grand_total').innerText = grand_total;
+	}
+	
+	
+	function show_categories()
+	{
+		if (!g_categories_data_from_server || !g_categories_data_from_server.data)
+			return;
+
+		const rows = g_categories_data_from_server.data.rows;
+
+		// show only categories whose parent_category matches the currently open category
+		const categories_to_show = rows.filter(row => row[2] === g_current_category_code);
+
+		// the "home" tile is always shown first and always jumps back to root
+		const home_html = `
+			<div class="category-item" onclick="g_current_category_code='root'; show_category();">
+				<img src="https://i.ibb.co/601Zp24x/home.png" alt="עמוד ראשי" class="category-item-image">
+				<div class="category-item-name">עמוד ראשי</div>
+			</div>`;
+
+		const categories_html = categories_to_show.map(row =>
+		{
+			const category_code         = row[0];
+			const category_name         = row[1];
+			// row[2] is parent_category, used only for filtering above
+			const thumbnail_image_file  = row[3];
+
+			return `
+				<div class="category-item" onclick="g_current_category_code='${category_code}'; show_category();">
+					<img src="${thumbnail_image_file}" alt="${category_name}" class="category-item-image">
+					<div class="category-item-name">${category_name}</div>
+				</div>`;
+		}).join('');
+
+		document.getElementById('g_categories_div').innerHTML = home_html + categories_html;
+	}
+
 
 	async function get_products()
 	{
@@ -199,6 +400,8 @@
 		});
 
 		g_products_data_from_server = await response.json();
+		
+		// example response from server: {"result":"ok","data":{"headers":["product_code","parent_category_code","product_name","product_description","product_price_including_vat","amount_in_stock","thumbnail_image_file","product_page_link"],"rows":[["injera_sour_white_5_units","fruits","אינגרה מחמצת לבנה","מארז המכיל 5 יחידות","50","10","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"],["injera_sour_red_5_units","vegetables","אינגרה מחמצת אדומה","מארז המכיל 5 יחידות","50","10","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"],["tabasco_1_unit","root","טבסקו חריף","רוטב טבסקו חריף","20","10","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"],["beef_stock","stocks","ציר בקר","ציר בקר ברוטב טרטר","50","99","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png",""],["chicken_stock","stocks","ציר עוף","ציר עוף נראה כמו קוף","50","99","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png",""],["chili_con_carne_1_serving","frozen","צילי קון קרנה מקסיקני","צילי קון קרנה מקסיקני, מנה אחת בנפח כ-500 סמ\"ק, לא חריף","60","44","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"]]}}
 
 		if (g_products_data_from_server.result != "ok") 
 		{
@@ -270,7 +473,7 @@
 
 		g_categories_data_from_server = await response.json();
 		
-		// example response: {"result":"ok","records":{"headers":["category_code","category_name","parent_category","hide_category_and_products","thumbnail_image_file"],"rows":[["fruits","ירקות","vegi","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegetables","פירות","vegi","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["frozen","קפואים","","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegi","מהצומח","","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"]]}}
+		// example response: {"result":"ok","data":{"headers":["category_code","category_name","parent_category","thumbnail_image_file"],"rows":[["fruits","ירקות","vegi","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegetables","פירות","vegi","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["frozen","קפואים","root","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegi","מהצומח","root","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"]]}}
 
 		if (g_configuration_data_from_server.result != "ok") 
 		{
@@ -326,9 +529,7 @@
 
 	async function on_page_load()
 	{
-		//showOverlay("טוען נתונים מהשרת ...");
-		
-		set_default_delivery_method();
+		showOverlay("טוען נתונים מהשרת ...");
 		
 		g_server_url = getServerUrl();
 		if(g_server_url == "")
@@ -339,14 +540,11 @@
 		
 		console.log(g_server_url);
 		
-		//await Promise.all([get_configuration_data(), get_categories(), get_products(), show_pickup_points(), get_delivery_cities()]);
+		await Promise.all([get_configuration_data(), get_categories(), get_products(), show_pickup_points(), get_delivery_cities()]);
 		
 		show_category();
 		
-		if(g_order.delivery_type == "pickup_point")
-			document.getElementById('g_pickup_section').style.display = 'block'; // why is it not working?
-		else
-			document.getElementById('g_delivery_section').style.display = 'block';
+		// show the delivery option according to the value in   g_order.delivery_type ???
 		
 		hideOverlay();
 		
@@ -1094,60 +1292,16 @@
 	<div class="container">
 		<img src="https://beensman.github.io/rnt-dev/logo_medium.png" alt="לוגו רומיה ותמר" class="logo"> <!-- https://i.ibb.co/2L4HRRz/logo-medium.png -->
 		<div class="welcome-text">ברוכים הבאים לחנות של רומיה ותמר</div>
-		<div class="welcome-link"><a href="https://www.rumyah-and-tamar.com/">מוצרים שלא קיימים במלאי לא מוצגים כאן, לצפיה בכל המוצרים שלנו לחצו כאן</a></div>
+		<div class="welcome-link"><a href="https://www.rumyah-and-tamar.com/">הצטרפו כנקודת איסוף עצמי וקבלו כסף ומוצרים בחינם! לחצו כאן לפרטים!</a></div>
 	</div>
 
 	<!-- PRODUCTS / CATEGORIES (מתחם עליון) -->
 	<div class="container" id="g_category_div"> <!-- category contain products and sub categories -->
 		<div id="g_products_div">
-		<!-- product image size is 100 x 100 px -->
-			<!-- example product - start -->
-			<div class="product-card" data-product-code="injera_sour_white">
-				<img src="https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png" alt="הומאדה מצחמה אריגנית" class="product-card-image">
-				<div class="product-card-info">
-					<div class="product-card-name">הומאדה מצחמה אריגנית</div>
-					<div class="product-card-subtitle">מארז המכיל 5 יחידות</div>
-					<div class="product-card-price-row">
-						<span class="product-card-price">50 ש"ח</span>
-						<div class="qty-control">
-							<button class="qty-btn" onclick="onProductQtyChange(this, -1);">-</button>
-							<input type="text" class="qty-input" value="0" readonly>
-							<button class="qty-btn" onclick="onProductQtyChange(this, 1);">+</button>
-						</div>
-					</div>
-					<div class="product-card-total">סה"כ: 0 ש"ח</div>
-				</div>
-			</div>				
-			<!-- example product - end -->
+	
 		</div>
 		<div id="g_categories_div">
-		<!-- category image size is 25 x 25 px -->
-			<!-- example categories - start -->
-			<div class="category-item" onclick="g_current_category_code='root'; show_category();">
-				<img src="https://i.ibb.co/PvYRkLpj/home.png" alt="עמוד ראשי" class="category-item-image">
-				<div class="category-item-name">עמוד ראשי</div>
-			</div>
 			
-			<div class="category-item" data-category-code="fruits_vegetables" onclick="onCategoryClick(this);">
-				<img src="https://i.ibb.co/0dSgp9x/fruits-vegetables-thumbnail.png" alt="פירות וירקות" class="category-item-image">
-				<div class="category-item-name">פירות וירקות</div>
-			</div>
-
-			<div class="category-item" data-category-code="fruits_vegetables" onclick="onCategoryClick(this);">
-				<img src="https://i.ibb.co/0dSgp9x/fruits-vegetables-thumbnail.png" alt="פירות וירקות" class="category-item-image">
-				<div class="category-item-name">פירות וירקות</div>
-			</div>
-
-			<div class="category-item" data-category-code="fruits_vegetables" onclick="onCategoryClick(this);">
-				<img src="https://i.ibb.co/0dSgp9x/fruits-vegetables-thumbnail.png" alt="פירות וירקות" class="category-item-image">
-				<div class="category-item-name">פירות וירקות</div>
-			</div>
-
-			<div class="category-item" data-category-code="dairy" onclick="onCategoryClick(this);">
-				<img src="https://i.ibb.co/0dSgp9x/dairy-thumbnail.png" alt="מוצרי חלב" class="category-item-image">
-				<div class="category-item-name">מוצרי חלב</div>
-			</div>
-			<!-- example categories - end -->
 		</div>
 	</div>
 
@@ -1159,7 +1313,7 @@
 					<th>תמונה</th>
 					<th>שם המוצר</th>
 					<th>כמות</th>
-					<th>מחיר ליחידה</th>
+					<th>מחיר</th>
 					<th>סה"כ</th>
 				</tr>
 			</thead>
