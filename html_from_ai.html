@@ -34,6 +34,9 @@
 	var g_show_categories = 0;
 	var g_current_category_code = "root";
 	
+	var g_discount = 0;
+	var g_discount_type_money_or_percentage = "";
+	
 	var g_order = 
 	{
 		products: [],  // { product_code, amount }
@@ -280,7 +283,7 @@
 		show_cart();
 	}	
 	
-		
+		/*
 	function show_cart()
 	{
 		const cart_tbody = document.getElementById('g_cart_tbody');
@@ -314,7 +317,19 @@
 			const line_total = (product_price * qty).toFixed(0);
 
 			grand_total += product_price * qty;
-
+			
+			if(g_discount_type_money_or_percentage === "money")
+			{
+				grand_total -= g_discount;
+			}
+			else //"percentage"
+			{
+				grand_total -= (grand_total*g_discount/100);
+			}
+			
+			if(grand_total <= 0)
+				grand_total = 0;
+			
 			return `
 				<tr>
 					<td><img src="${thumbnail_image_file}" alt="${product_name}" class="cart-item-image"></td>
@@ -345,6 +360,89 @@
 		cart_tbody.innerHTML = items_html + total_row_html;
 
 		document.getElementById('g_grand_total').innerText = grand_total;
+	}
+*/
+
+	function show_cart()
+	{
+		const cart_tbody = document.getElementById('g_cart_tbody');
+
+		if (!g_order.products || g_order.products.length === 0)
+		{
+			cart_tbody.innerHTML = '<tr><td colspan="5" class="cart-empty-row">העגלה ריקה</td></tr>';
+			document.getElementById('g_grand_total').innerText = "0";
+			return;
+		}
+
+		const rows = (g_products_data_from_server && g_products_data_from_server.data)
+			? g_products_data_from_server.data.rows
+			: [];
+
+		let grand_total = 0; // raw total, no discount yet
+
+		const items_html = g_order.products.map(order_item =>
+		{
+			const product_row = rows.find(row => row[0] === order_item.product_code);
+			if (!product_row) return '';
+
+			const product_code         = product_row[0];
+			const product_name         = product_row[2];
+			const product_price        = parseFloat(product_row[4]);
+			const thumbnail_image_file = product_row[6];
+
+			const qty        = order_item.amount;
+			const line_total_str = (product_price * qty).toFixed(0);
+
+			grand_total += product_price * qty; // just accumulate here
+
+			return `
+				<tr>
+					<td><img src="${thumbnail_image_file}" alt="${product_name}" class="cart-item-image"></td>
+					<td>${product_name}</td>
+					<td>
+						<div class="qty-control" style="justify-content:center;">
+							<button class="qty-btn" onclick="on_product_quantity_change('${product_code}', -1);">-</button>
+							<input type="text" class="qty-input" value="${qty}" readonly>
+							<button class="qty-btn" onclick="on_product_quantity_change('${product_code}', 1);">+</button>
+						</div>
+					</td>
+					<td>${product_price} ש"ח</td>
+					<td>${line_total_str} ש"ח</td>
+				</tr>`;
+		}).join('');
+
+		let grand_total_str = grand_total.toFixed(0);
+
+		const total_row_html = `
+			<tr class="cart-total-row">
+				<td></td>
+				<td>סה"כ</td>
+				<td></td>
+				<td></td>
+				<td>${grand_total_str} ש"ח</td>
+			</tr>`;
+
+		cart_tbody.innerHTML = items_html + total_row_html;
+
+		if(g_discount  > 0)
+		{
+			// apply the discount only for g_grand_total
+			if (g_discount_type_money_or_percentage === "money")
+			{
+				grand_total -= g_discount;
+			}
+			else if (g_discount_type_money_or_percentage === "percentage")
+			{
+				grand_total -= (grand_total * g_discount / 100);
+			}
+
+			if (grand_total <= 0)
+				grand_total = 0;
+
+			grand_total_str = grand_total.toFixed(0); // toFixed() returns a string
+		}
+			
+		document.getElementById('g_grand_total').innerText = grand_total_str;
 	}
 	
 	
@@ -531,6 +629,8 @@
 	{
 		showOverlay("טוען נתונים מהשרת ...");
 		
+		set_initial_field_states();
+		
 		g_server_url = getServerUrl();
 		if(g_server_url == "")
 		{
@@ -669,23 +769,12 @@
 		{
 			if (result.discount_type_money_or_percentage === "percentage")
 			{
-				document.getElementById('g_discount_text').value = result.discount + "%";
+				document.getElementById('g_discount_text').value = "הנחה: " + result.discount + "%";
 			}
 			else
 			{
-				document.getElementById('g_discount_text').value = result.discount + ' ש"ח';
+				document.getElementById('g_discount_text').value = "הנחה: " + result.discount + ' ש"ח';
 			}
-			/* to be deleted after testing
-			let final_total = result.total_sum_without_discount;
-			if (result.discount_type_money_or_percentage === "percentage")
-			{
-				final_total = result.total_sum_without_discount - (result.total_sum_without_discount * (result.discount / 100));
-			}
-			else
-			{
-				final_total = result.total_sum_without_discount - result.discount;
-			}
-			if (final_total < 0) final_total = 0; */
 			
 			document.getElementById('g_grand_total').innerText = result.total_price_to_be_paid;
 			
@@ -711,7 +800,7 @@
 		{
 			showOverlay("המערכת שולחת אליך הודעה עם קוד אימות");
 			
-			const targetPhone = document.getElementById('g_phone_input').value
+			const targetPhone = document.getElementById('g_phone_input').value;
 			
 			const result = await post_to_server_with_busy_retry(
 				{ action: "send_verification_code_sms", recipient: targetPhone },
@@ -737,6 +826,113 @@
 		{
 		  console.log("ERROR: on_click_send_verification_code() catch error:" + error);
 		}
+	}
+
+	async function on_click_apply_coupon()
+	{
+		try
+		{
+			showOverlay("המערכת בודקת את הקופון");
+
+			g_discount = 0;
+			g_discount_type_money_or_percentage = "";
+			
+			const targetPhone = document.getElementById('g_phone_input').value;
+			
+			const coupon_code_input = document.getElementById('g_coupon_code_input').value;
+			
+			const verification_code_input = document.getElementById('g_verification_code').value; 
+			
+			const result = await post_to_server_with_busy_retry(
+				{ action: "is_a_valid_coupon", coupon_code: coupon_code_input, customer_phone_number: targetPhone, verification_code: verification_code_input },
+				"השרת עמוס, מנסה שוב, אנא המתינו..."
+			);
+			
+			//example response: {"result":"ok","validity_results":{"is_valid":0,"is_a_new_customer":0,"discount":0,"discount_type_money_or_percentage":""}}
+			
+			hideOverlay();
+
+			if (result.result === "ok") 
+			{
+				if(result.validity_results.is_valid !== 1)
+				{
+					alert("מצטערים ומתנצלים, קוד הקופון שהוזן אינו תקין, או שאזל, או שאינו בתוקף, או שאין לכם זכאות להשתמש בו. הזמינו כעת ותקבלו מוצרים איכותיים ובריאים, זו המתנה האמיתית! הרשמו גם לקבלת הודעות מאיתנו ואולי תופתעו לטובה.");
+					console.log("מצטערים ומתנצלים, קוד הקופון שהוזן אינו תקין, או שאזל, או שאינו בתוקף, או שאין לכם זכאות להשתמש בו. הזמינו כעת ותקבלו מוצרים איכותיים ובריאים, זו המתנה האמיתית! הרשמו גם לקבלת הודעות מאיתנו ואולי תופתעו לטובה.");
+					return;
+				}
+
+				
+				if(result.validity_results.discount_type_money_or_percentage === "money" || result.validity_results.discount_type_money_or_percentage === "percentage")
+				{
+					g_discount = result.validity_results.discount;
+					g_discount_type_money_or_percentage = result.validity_results.discount_type_money_or_percentage;
+
+					show_cart();
+					
+					alert("הקופון נמצא תקין, הסכום לתשלום עודכן בהתאם, ללא התחייבות עתידית מאחר וחלק מהקופונים מוגבלים בכמות או בזמן וכיוצב");
+				}
+				else
+				{
+					alert("מצטערים ומתנצלים, קוד הקופון שהוזן אינו תקין, או שאזל, או שאינו בתוקף, או שאין לכם זכאות להשתמש בו. הזמינו כעת ותקבלו מוצרים איכותיים ובריאים, זו המתנה האמיתית! הרשמו גם לקבלת הודעות מאיתנו ואולי תופתעו לטובה.");
+					console.log("מצטערים ומתנצלים, קוד הקופון שהוזן אינו תקין, או שאזל, או שאינו בתוקף, או שאין לכם זכאות להשתמש בו. הזמינו כעת ותקבלו מוצרים איכותיים ובריאים, זו המתנה האמיתית! הרשמו גם לקבלת הודעות מאיתנו ואולי תופתעו לטובה.");
+					
+					g_discount = 0;
+					show_cart();
+				}
+						
+				if (g_discount > 0)
+				{
+					if (g_discount_type_money_or_percentage === "percentage")
+					{
+						document.getElementById('g_discount_text').value = "הנחה: " + g_discount + "%";
+					}
+					else
+					{
+						document.getElementById('g_discount_text').value = "הנחה: " +  g_discount + ' ש"ח';
+					}
+				}				
+			} 
+			else 
+			{
+				alert("בדיקת הקופון נכשלה, יש לוודא כי קוד האימות וקוד הקופון נכונים ולנסות שנית ");
+				console.log("בדיקת הקופון נכשלה, יש לוודא כי קוד האימות וקוד הקופון נכונים ולנסות שנית ");
+			}
+		}
+		catch(error)
+		{
+		  console.log("ERROR: on_click_apply_coupon() catch error:" + error);
+		}
+	}
+
+
+	function set_initial_field_states()
+	{
+		document.getElementById('g_terms_checkbox_group').style.backgroundColor = 'yellow';
+
+		document.getElementById('g_phone_input').disabled = true;
+		document.getElementById('g_send_verification_code_button').disabled = true;
+		document.getElementById('g_verification_code').disabled = true;
+		document.getElementById('g_coupon_code_input').disabled = true;
+		document.getElementById('g_apply_coupon_button').disabled = true;
+	}
+
+
+	function on_terms_checkbox_change()
+	{
+		const is_checked = document.getElementById('g_terms_checkbox').checked;
+
+		document.getElementById('g_phone_input').disabled = !is_checked;
+		document.getElementById('g_send_verification_code_button').disabled = !is_checked;
+		document.getElementById('g_verification_code').disabled = !is_checked;
+	}
+
+
+	function on_verification_code_input()
+	{
+		const has_value = document.getElementById('g_verification_code').value.trim().length > 0;
+
+		document.getElementById('g_coupon_code_input').disabled = !has_value;
+		document.getElementById('g_apply_coupon_button').disabled = !has_value;
 	}
 
 	</script>
@@ -1277,6 +1473,26 @@
 			line-height: 1.2;
 		}
 
+		/* DISABLED FIELDS - visual cue that these are intentionally locked */
+
+		input:disabled,
+		select:disabled,
+		textarea:disabled
+		{
+			background: #eee;
+			color: #999;
+			border: 1px dashed #bbb;
+			cursor: not-allowed;
+		}
+
+		button:disabled
+		{
+			background: #bbb;
+			color: #eee;
+			cursor: not-allowed;
+			opacity: 0.7;
+		}
+
 	</style>
 	
 </head>
@@ -1330,16 +1546,16 @@
 
 			<!-- ==== SECTION 1: terms, phone verification, coupon ==== -->
 
-			<div class="checkbox-group">
-				<input type="checkbox" id="g_terms_checkbox"><label for="g_terms_checkbox">קראתי ואני מסכים ומקבל את התקנון ותנאי השימוש באתר.</label>
+			<div class="checkbox-group" id="g_terms_checkbox_group">
+				<input type="checkbox" id="g_terms_checkbox" onchange="on_terms_checkbox_change();"><label for="g_terms_checkbox">קראתי ואני מסכים ומקבל את התקנון ותנאי השימוש באתר.</label>
 			</div>
 
 			<div class="form-group">
 				<label>מספר טלפון ישראלי</label>
 				<div class="input-with-button">
 					<input type="text" id="g_phone_input" class="phone-input">
-					<button onclick="on_click_send_verification_code();">שלחו לי קוד</button>
-					<input type="text" id="g_verification_code" class="verification-input" placeholder="קוד אימות">
+					<button id="g_send_verification_code_button" onclick="on_click_send_verification_code();">שלחו לי קוד</button>
+					<input type="text" id="g_verification_code" class="verification-input" placeholder="קוד אימות" oninput="on_verification_code_input();">
 				</div>
 			</div>
 			
@@ -1354,7 +1570,7 @@
 				<label>קוד קופון</label>
 				<div class="input-with-button">
 					<input type="text" id="g_coupon_code_input" class="coupon-input">
-					<button onclick="on_apply_coupon_click();">החל קופון</button>
+					<button id="g_apply_coupon_button" onclick="on_click_apply_coupon();">החל קופון</button>
 					<input type="text" id="g_discount_text" class="discount-input" placeholder="הנחה" value="0 ש&quot;ח" readonly>
 				</div>
 			</div>
