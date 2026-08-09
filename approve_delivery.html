@@ -123,7 +123,7 @@
 
 			const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a cached version
 			const xhr = new XMLHttpRequest();
-			xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
 			xhr.send(null);
 
 			if (xhr.status >= 200 && xhr.status < 300)
@@ -183,45 +183,57 @@
 	}
 	
 
-	async function post_to_server_with_busy_retry(body_object, busy_overlay_text)
+	async function post_to_server_with_busy_retry(body_object)
 	{
-		// sends a request to the server, if the server responds with "server_is_buisy" it waits 2 seconds (showing busy_overlay_text) and tries again
-		console.log("post_to_server_with_busy_retry() - start" );
 		try
 		{
-			while (true)
+			let result, response;
+			
+			for(let i=0; i<10; i++)
 			{
-				const response = await fetch(g_server_url,
+				try
 				{
-					method: "POST",
-					headers: { "Content-Type": "text/plain;charset=utf-8" },
-					body: JSON.stringify(body_object),
-					redirect: "follow"
-				});
+					response = await fetch(g_server_url,
+					{
+						method: "POST",
+						headers: { "Content-Type": "text/plain;charset=utf-8" },
+						body: JSON.stringify(body_object)
+					});
 
-				const result = await response.json();
+					result = await response.json();
 
-				console.log("post_to_server_with_busy_retry() result:" + JSON.stringify(result));
+					if (result.result === "server_is_buisy")
+					{
+						showOverlay("השרת עמוס, ממתין 2 שניות ומנסה שנית, אנא המתינו");
+						await new Promise(resolve => setTimeout(resolve, 2000)); // sleep
+						continue;
+					}
+					else if (result.result === "server_under_maintenance")
+					{
+						showOverlay("השרת בתחזוקה, ממתין 5 שניות ומנסה שנית, אנא המתינו....");
+						await new Promise(resolve => setTimeout(resolve, 5000));
+						continue;
+					}
 
-				if (result.result === "server_is_buisy")
+					return result;
+				}
+				catch(error)
 				{
-					showOverlay(busy_overlay_text);
-					await new Promise(resolve => setTimeout(resolve, 2000));
+					showOverlay("חלה שגיאה בתקשורת מול השרת, ממתין מספר שניות ומנסה שנית");
+					console.log("ERROR: post_to_server_with_busy_retry() catch1 error:" + error);
+					console.log("ERROR: post_to_server_with_busy_retry() catch1 body_object:" + JSON.stringify(body_object));
+					await new Promise(resolve => setTimeout(resolve, 5000));
 					continue;
 				}
-				else if(result.result == "server_under_maintenance")
-				{
-					console.log("ERROR: post_to_server_with_busy_retry()  >> server_under_maintenance");
-					return { result: "server_under_maintenance", text: "" };
-				}
-
-				return result;
 			}
+		
+			return result;	
 		}
-		catch (err)
+		catch(error)
 		{
-			console.log("ERROR: post_to_server_with_busy_retry() catch error:" + err.toString());
-			return { result: "error", text: "" };
+			console.log("ERROR: post_to_server_with_busy_retry() catch2 error:" + error);
+			console.log("ERROR: post_to_server_with_busy_retry() catch2 body_object:" + JSON.stringify(body_object));
+			throw error;
 		}
 	}
 	
@@ -240,19 +252,13 @@
 			
 			
 			const result = await post_to_server_with_busy_retry(
-				{ action: "approve_delivery_acceptance", order_id: input_order_id, secret_phrase: input_password, phone_number: input_phone},
-				"השרת עמוס, מנסה שוב, אנא המתינו..."
-			);
+				{ action: "approve_delivery_acceptance", order_id: input_order_id, secret_phrase: input_password, phone_number: input_phone});
 			
 			hideOverlay();
 			
 			if(result.result == "ok")
 			{
 				alert("העדכון התקבל בהצלחה, כעת ניתן לסגור את הדפדפן");
-			}
-			else if(result.result == "server_under_maintenance")
-			{
-				alert("השרת בתחזוקה, נא לנסות שנית מאוחר יותר");
 			}
 			else
 			{
@@ -307,7 +313,7 @@
 	</div>
 
     <div class="container">
-        <img src="https://i.ibb.co/KcpPMGxL/logo-medium.png" alt="לוגו רומיה ותמר" class="logo">
+        <img src="https://beensman.github.io/rnt-dev/logo_medium.png" alt="לוגו רומיה ותמר" class="logo">
 
         <div class="form-card">
 
