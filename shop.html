@@ -21,6 +21,8 @@
 	 * is strictly forbidden unless prior written permission is obtained 
 	 * from the copyright holder.
 	 */
+	 
+	var g_files_server_base_url = "https://beensman.github.io/rnt-dev/";
  
 	var g_work_mode = "dev"; // "dev"  or  "production"
 	var g_server_url = "";
@@ -318,7 +320,7 @@
 				const product_description     = product.product_description;
 				const product_price           = parseFloat(product.product_price_including_vat);
 				const amount_in_stock         = parseInt(product.amount_in_stock);
-				const thumbnail_image_file    = product.thumbnail_image_file;
+				const thumbnail_image_file    = g_files_server_base_url + "img/products/" + product_code + "_thumbnail.png";
 				const product_page_link   	  = product.product_page_link;
 				const net_content_gr_ml       = parseFloat(product.net_content_gr_ml);
 				const show_price_per_100_units       = parseInt(product.show_price_per_100_units);
@@ -578,9 +580,10 @@
 			const categories_to_show = rows.filter(row => row_to_object(row, headers).parent_category === g_current_category_code);
 
 			// the "home" tile is always shown first and always jumps back to root
+			const home_image_file = g_files_server_base_url + "img/categories/home.png";
 			const home_html = `
 				<div class="category-item" onclick="g_current_category_code='root'; show_category();">
-					<img src="https://i.ibb.co/601Zp24x/home.png" alt="עמוד ראשי" class="category-item-image">
+					<img src="${home_image_file}" alt="עמוד ראשי" class="category-item-image">
 					<div class="category-item-name">עמוד ראשי</div>
 				</div>`;
 
@@ -591,7 +594,9 @@
 				const category_code         = category.category_code;
 				const category_name         = category.category_name;
 				// category.parent_category is used only for filtering above
-				const thumbnail_image_file  = category.thumbnail_image_file;
+				//const thumbnail_image_file  = category.thumbnail_image_file; 
+				const thumbnail_image_file    = g_files_server_base_url + "img/categories/" + category_code + ".png";
+				
 
 				return `
 					<div class="category-item" onclick="g_current_category_code='${category_code}'; show_category();">
@@ -617,7 +622,7 @@
 	
 		g_products_data_from_server = await post_to_server_with_busy_retry({ action: "get_products" });
 		
-		// example response from server: {"result":"ok","data":{"headers":["product_code","parent_category_code","product_name","product_description","net_content_gr_ml","show_price_per_100_units","units_of_price_per_100_units","product_price_including_vat","amount_in_stock","thumbnail_image_file","product_page_link"],"rows":[["injera_sour_white_5_units","fruits","אינגרה מחמצת לבנה","מארז המכיל 5 יחידות","750","0","gr","50","10","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"],["injera_sour_red_5_units","vegetables","אינגרה מחמצת אדומה","מארז המכיל 5 יחידות","750","0","gr","50","10","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"],["tabasco_1_unit","root","טבסקו חריף","רוטב טבסקו חריף","50","1","ml","20","10","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"],["beef_stock","stocks","ציר בקר","ציר בקר ברוטב טרטר","500","1","gr","50","99","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png",""],["chicken_stock","stocks","ציר עוף","ציר עוף נראה כמו קוף","500","1","gr","50","99","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png",""],["chili_con_carne_1_serving","frozen","צילי קון קרנה מקסיקני","צילי קון קרנה מקסיקני, מנה אחת בנפח כ-500 סמ\"ק, לא חריף","500","1","gr","60","44","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"]]}}
+		// example response from server: {"result":"ok","data":{"headers":["product_code","parent_category_code","product_name","product_description","net_content_gr_ml","show_price_per_100_units","units_of_price_per_100_units","product_price_including_vat","amount_in_stock","product_page_link"],"rows":[["injera_sour_white_5_units","fruits","אינגרה מחמצת לבנה","מארז המכיל 5 יחידות","750","0","gr","50","10","https://www.rumyah-and-tamar.com/injera"],["injera_sour_red_5_units","vegetables","אינגרה מחמצת אדומה","מארז המכיל 5 יחידות","750","0","gr","50","10","https://www.rumyah-and-tamar.com/injera"],["tabasco_1_unit","root","טבסקו חריף","רוטב טבסקו חריף","50","1","ml","20","10","https://www.rumyah-and-tamar.com/injera"],["beef_stock","stocks","ציר בקר","ציר בקר ברוטב טרטר","500","1","gr","50","99",""],["chicken_stock","stocks","ציר עוף","ציר עוף נראה כמו קוף","500","1","gr","50","99",""],["chili_con_carne_1_serving","frozen","צילי קון קרנה מקסיקני","צילי קון קרנה מקסיקני, מנה אחת בנפח כ-500 סמ\"ק, לא חריף","500","1","gr","60","44","https://www.rumyah-and-tamar.com/injera"]]}}
 
 		if (g_products_data_from_server.result != "ok") 
 		{
@@ -683,7 +688,7 @@
 
 		g_categories_data_from_server = await post_to_server_with_busy_retry({ action: "get_categories" });
 		
-		// example response: {"result":"ok","data":{"headers":["category_code","category_name","parent_category","thumbnail_image_file"],"rows":[["fruits","ירקות","vegi","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegetables","פירות","vegi","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["frozen","קפואים","root","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegi","מהצומח","root","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"]]}}
+		// example response: {"result":"ok","data":{"headers":["category_code","category_name","parent_category"],"rows":[["fruits","ירקות","vegi"],["vegetables","פירות","vegi"],["frozen","קפואים","root"],["vegi","מהצומח","root"]]}}
 
 		if (g_categories_data_from_server.result != "ok") 
 		{
@@ -709,10 +714,7 @@
 		{
 			const xhr = new XMLHttpRequest();
 			const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a chached version
-			if(g_work_mode == "dev")
-				xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
-			else
-				xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			xhr.open("GET", g_files_server_base_url + "server_url.txt?v=" + cacheBuster, false); // false = synchronous
 			xhr.send();
 			if (xhr.status === 200) 
 			{
@@ -1753,7 +1755,10 @@
 
 	<!-- LOGO & WELCOME TEXT -->
 	<div class="container">
-		<img src="https://beensman.github.io/rnt-dev/logo_medium.png" alt="לוגו רומיה ותמר" class="logo"> <!-- https://i.ibb.co/2L4HRRz/logo-medium.png -->
+		<img id="g_logo_img" alt="לוגו רומיה ותמר" class="logo">
+		<script>
+			document.getElementById('g_logo_img').src = g_files_server_base_url + "img/logo_medium.png";
+		</script>
 		<div class="welcome-text">ברוכים הבאים לחנות של רומיה ותמר</div>
 		<div class="welcome-link"><a href="https://www.rumyah-and-tamar.com/">הצטרפו כנקודת איסוף עצמי וקבלו כסף ומוצרים בחינם! לחצו כאן לפרטים!</a></div>
 	</div>

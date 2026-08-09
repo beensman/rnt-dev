@@ -29,6 +29,8 @@
 	
 	<script>
 
+	var g_files_server_base_url = "https://beensman.github.io/rnt-dev/";
+ 
 	var g_did_i_finish_reporting_to_server = 0;
 
 	function getServerUrl()
@@ -39,7 +41,7 @@
 
 			const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a cached version
 			const xhr = new XMLHttpRequest();
-			xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			xhr.open("GET", g_files_server_base_url + "server_url.txt?v=" + cacheBuster, false); // false = synchronous
 			xhr.send(null);
 
 			if (xhr.status >= 200 && xhr.status < 300)

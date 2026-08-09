@@ -143,6 +143,8 @@
 	
 	<script>
 
+	var g_files_server_base_url = "https://beensman.github.io/rnt-dev/";
+ 
 	var g_server_url = "";
 
 	function get_server_url()
@@ -153,7 +155,7 @@
 
 			const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a cached version
 			const xhr = new XMLHttpRequest();
-			xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			xhr.open("GET", g_files_server_base_url + "server_url.txt?v=" + cacheBuster, false); // false = synchronous
 			xhr.send(null);
 
 			if (xhr.status >= 200 && xhr.status < 300)
@@ -347,7 +349,10 @@
 	</div>
 
     <div class="container">
-        <img src="https://beensman.github.io/rnt-dev/logo_medium.png" alt="לוגו רומיה ותמר" class="logo">
+		<img id="g_logo_img" alt="לוגו רומיה ותמר" class="logo">
+		<script>
+			document.getElementById('g_logo_img').src = g_files_server_base_url + "img/logo_medium.png";
+		</script>
 
         <div class="form-card">
 
