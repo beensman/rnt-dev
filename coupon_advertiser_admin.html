@@ -328,7 +328,7 @@
 
 			const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a cached version
 			const xhr = new XMLHttpRequest();
-			xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
 			xhr.send(null);
 
 			if (xhr.status >= 200 && xhr.status < 300)
@@ -388,45 +388,59 @@
 	}
 	
 
-	async function post_to_server_with_busy_retry(body_object, busy_overlay_text)
+	async function post_to_server_with_busy_retry(body_object)
 	{
-		// sends a request to the server, if the server responds with "server_is_buisy" it waits 2 seconds (showing busy_overlay_text) and tries again
-		console.log("post_to_server_with_busy_retry() - start" );
 		try
 		{
-			while (true)
+			console.log("post_to_server_with_busy_retry() - start - body_object:" + JSON.stringify(body_object));
+			
+			let result, response;
+			
+			for(let i=0; i<10; i++)
 			{
-				const response = await fetch(g_server_url,
+				try
 				{
-					method: "POST",
-					headers: { "Content-Type": "text/plain;charset=utf-8" },
-					body: JSON.stringify(body_object),
-					redirect: "follow"
-				});
+					response = await fetch(g_server_url,
+					{
+						method: "POST",
+						headers: { "Content-Type": "text/plain;charset=utf-8" },
+						body: JSON.stringify(body_object)
+					});
 
-				const result = await response.json();
+					result = await response.json();
 
-				console.log("post_to_server_with_busy_retry() result:" + JSON.stringify(result));
+					if (result.result === "server_is_buisy")
+					{
+						showOverlay("השרת עמוס, ממתין 2 שניות ומנסה שנית, אנא המתינו");
+						await new Promise(resolve => setTimeout(resolve, 2000)); // sleep
+						continue;
+					}
+					else if (result.result === "server_under_maintenance")
+					{
+						showOverlay("השרת בתחזוקה, ממתין 5 שניות ומנסה שנית, אנא המתינו....");
+						await new Promise(resolve => setTimeout(resolve, 5000));
+						continue;
+					}
 
-				if (result.result === "server_is_buisy")
+					return result;
+				}
+				catch(error)
 				{
-					showOverlay(busy_overlay_text);
-					await new Promise(resolve => setTimeout(resolve, 2000));
+					showOverlay("חלה שגיאה בתקשורת מול השרת, ממתין מספר שניות ומנסה שנית");
+					console.log("ERROR: post_to_server_with_busy_retry() catch1 error:" + error);
+					console.log("ERROR: post_to_server_with_busy_retry() catch1 body_object:" + JSON.stringify(body_object));
+					await new Promise(resolve => setTimeout(resolve, 5000));
 					continue;
 				}
-				else if(result.result == "server_under_maintenance")
-				{
-					console.log("ERROR: post_to_server_with_busy_retry()  >> server_under_maintenance");
-					return { result: "server_under_maintenance", text: "" };
-				}
-
-				return result;
 			}
+		
+			return result;	
 		}
-		catch (err)
+		catch(error)
 		{
-			console.log("ERROR: post_to_server_with_busy_retry() catch error:" + err.toString());
-			return { result: "error", text: "" };
+			console.log("ERROR: post_to_server_with_busy_retry() catch2 error:" + error);
+			console.log("ERROR: post_to_server_with_busy_retry() catch2 body_object:" + JSON.stringify(body_object));
+			throw error;
 		}
 	}
 	
@@ -611,14 +625,7 @@
 			let target_month = today.getMonth() + 1; // getMonth() is 0-based, so +1 gives current month 1-12
 			let target_year = current_year;
 
-			/* advertisers look at the preformance in "real" time, so they need the current  monthe to bee selected
-			target_month -= 1;
-			if (target_month === 0)
-			{
-				target_month = 12;
-				target_year -= 1;
-			}
-			*/
+			// advertisers look at the preformance in "real" time, so they need the current  monthe to bee selected
 
 			// fill years: current year + previous year
 			year_select.innerHTML = "";
@@ -639,7 +646,7 @@
 			for (let m = 1; m <= 12; m++)
 			{
 				const option = document.createElement("option");
-				option.value = m;
+				option.value = String(m).padStart(2, "0"); //m;
 				option.innerText = m;
 				if (m === target_month)
 				{
@@ -817,7 +824,7 @@
 	</div>
 
     <div class="container">
-        <img src="https://i.ibb.co/KcpPMGxL/logo-medium.png" alt="לוגו רומיה ותמר" class="logo">
+        <img src="https://beensman.github.io/rnt-dev/logo_medium.png" alt="לוגו רומיה ותמר" class="logo">
 
         <div class="top-button-row">
             <button class="main-button" id="g_show_coupons_button">הצג קופונים</button>

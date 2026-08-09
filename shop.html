@@ -23,312 +23,615 @@
 	 */
  
 	var g_work_mode = "dev"; // "dev"  or  "production"
-	
 	var g_server_url = "";
 	
 	var g_configuration_data_from_server = "";
-	
-	var g_show_categories = 0;
-	
 	var g_categories_data_from_server;
-
-	// NEW: null = show the categories grid (root) if g_show_categories is 1, or "show all products" if g_show_categories is 0.
-	// Any other value = the category_code currently selected, whose products are shown.
-	var g_current_category_code = null;
-
-	// NEW: quantities selected by the user, kept independently from the DOM so they survive
-	// navigating between the categories grid and different categories' product lists.
-	// Keyed by product_code -> quantity (number).
-	var g_cart_quantities = {};
-	
 	var g_products_data_from_server; 
-	
 	var g_pickup_points_data_from_server;
-	
 	var g_delivery_cities_data_from_server;
+
+	var g_show_categories = 0;
+	var g_current_category_code = "root";
+	
+	var g_discount = 0;
+	var g_discount_type_money_or_percentage = "";
 	
 	var g_order = 
 	{
-		products: [],  // empty, populate later { product_code, amount }
-		customer_name: null,
-		customer_phone: null,
-		customer_email: null,
-		customer_comments: null,
-		pickup_point_code: null,
-		coupon_code: null,
-		verification_code: null,
-		terms_accepted: null,
-		sms_reminder_opt_in: null,
-		marketing_opt_in: null
+		products: [],  // { product_code, amount }
+		customer_name: "",
+		customer_phone: "",
+		//customer_email: null,
+		customer_comments: "",
+		pickup_point_code: "",
+		coupon_code: "",
+		verification_code: "",
+		terms_accepted: "",
+		sms_reminder_opt_in: "",
+		marketing_opt_in: "",
+		delivery_type: "courier_to_home", //   pickup_point   or   courier_to_home
+		customer_city_code: "",
+		customer_street: "",
+		customer_building_number: "",
+		customer_apartment_number: ""
 	};
-	
+
+
 
 	function showOverlay(overlay_text)
 	{
-		document.getElementById('g_overlay_text').innerText = overlay_text;
-		document.getElementById('g_loading_overlay').style.display = 'flex';
+		try
+		{
+			document.getElementById('g_overlay_text').innerText = overlay_text;
+			document.getElementById('g_loading_overlay').style.display = 'flex';
+		}
+		catch(error)
+		{
+		  console.log("ERROR: showOverlay() catch error:" + error);
+		}
 	}
 
 	function hideOverlay()
 	{
-		document.getElementById('g_loading_overlay').style.display = 'none';
+		try
+		{
+			document.getElementById('g_loading_overlay').style.display = 'none';
+		}
+		catch(error)
+		{
+		  console.log("ERROR: hideOverlay() catch error:" + error);
+		}
 	}
 
 
-	async function post_to_server_with_busy_retry(body_object, busy_overlay_text)
+	async function post_to_server_with_busy_retry(body_object)
 	{
-		// sends a request to the server, if the server responds with "server_is_buisy" it waits 2 seconds (showing busy_overlay_text) and tries again
 		try
 		{
-			while (true)
+			let result, response;
+			
+			for(let i=0; i<10; i++)
 			{
-				const response = await fetch(g_server_url,
+				try
 				{
-					method: "POST",
-					headers: { "Content-Type": "text/plain;charset=utf-8" },
-					body: JSON.stringify(body_object)
-				});
+					response = await fetch(g_server_url,
+					{
+						method: "POST",
+						headers: { "Content-Type": "text/plain;charset=utf-8" },
+						body: JSON.stringify(body_object)
+					});
 
-				const result = await response.json();
+					result = await response.json();
 
-				if (result.result === "server_is_buisy")
+					if (result.result === "server_is_buisy")
+					{
+						showOverlay("השרת עמוס, ממתין 2 שניות ומנסה שנית, אנא המתינו");
+						await new Promise(resolve => setTimeout(resolve, 2000)); // sleep
+						continue;
+					}
+					else if (result.result === "server_under_maintenance")
+					{
+						showOverlay("השרת בתחזוקה, ממתין 5 שניות ומנסה שנית, אנא המתינו....");
+						await new Promise(resolve => setTimeout(resolve, 5000));
+						continue;
+					}
+
+					return result;
+				}
+				catch(error)
 				{
-					showOverlay(busy_overlay_text);
-					await new Promise(resolve => setTimeout(resolve, 2000));
+					showOverlay("חלה שגיאה בתקשורת מול השרת, ממתין מספר שניות ומנסה שנית");
+					console.log("ERROR: post_to_server_with_busy_retry() catch1 error:" + error);
+					console.log("ERROR: post_to_server_with_busy_retry() catch1 body_object:" + JSON.stringify(body_object));
+					await new Promise(resolve => setTimeout(resolve, 5000));
 					continue;
 				}
-
-				return result;
 			}
+		
+			return result;	
 		}
-		catch (err)
+		catch(error)
 		{
-			console.log("ERROR: post_to_server_with_busy_retry() catch error:" + err.toString());
-			return { result: "error", text: "" };
+			console.log("ERROR: post_to_server_with_busy_retry() catch2 error:" + error);
+			console.log("ERROR: post_to_server_with_busy_retry() catch2 body_object:" + JSON.stringify(body_object));
+			throw error;
 		}
 	}
 	
-		
-	async function show_pickup_points()
+	
+	function on_pickup_point_changed()
 	{
-		await get_pickup_points();
-				
-		document.getElementById('g_pickup_points_select').innerHTML = `<option value="not_selected">יש לבחור נקודת איסוף</option>` + 
-			g_pickup_points_data_from_server.data.map(point => 
+		try
+		{
+			if(document.getElementById('g_pickup_points_select').value == "not_selected")
 			{
-				return ` <option value="${point.pickup_point_code}"> ${point.details_short} </option>`;
-			}).join('');
-
+				document.getElementById('g_pickup_points_select').style.backgroundColor = 'yellow';
+			}
+			else
+			{
+				document.getElementById('g_pickup_points_select').style.backgroundColor = 'white';
+			}
+		}
+		catch(error)
+		{
+		  console.log("ERROR: on_pickup_point_changed() catch error:" + error);
+		}
 	}
 
+		
+	function on_city_changed()
+	{
+		try
+		{
+			if(document.getElementById('g_city_select').value == "not_selected")
+			{
+				document.getElementById('g_city_select').style.backgroundColor = 'yellow';
+			}
+			else
+			{
+				document.getElementById('g_city_select').style.backgroundColor = 'white';
+			}
+		}
+		catch(error)
+		{
+		  console.log("ERROR: on_city_changed() catch error:" + error);
+		}
+	}
+
+		
+	function on_change_delivery_type(type)
+	{
+		try
+		{
+			if(type == "pickup")
+			{
+				document.getElementById('g_pickup_tab').style.backgroundColor = 'yellow';
+				document.getElementById('g_to_home_tab').style.backgroundColor = 'white';
+				g_order.delivery_type = "pickup_point";
+				document.getElementById('g_delivery_section').style.display = "none";
+				document.getElementById('g_pickup_section').style.display = "block";
+			}
+			else
+			{
+				document.getElementById('g_pickup_tab').style.backgroundColor = 'white';
+				document.getElementById('g_to_home_tab').style.backgroundColor = 'yellow';
+				g_order.delivery_type = "courier_to_home"; 
+				document.getElementById('g_delivery_section').style.display = "block";
+				document.getElementById('g_pickup_section').style.display = "none";
+			}
+			
+			show_cart();
+		}
+		catch(error)
+		{
+		  console.log("ERROR: on_change_delivery_type() catch error:" + error);
+		}
+	}
+	
 		
 	async function get_pickup_points()
 	{
 	  try 
 	  {
-		console.log("get_pickup_points()");
+		console.log("get_pickup_points() - start");
 		
-		const response = await fetch(g_server_url, 
-		{
-		  method: "POST",
-		  headers: {
-          // Use text/plain to avoid a complex CORS preflight OPTIONS request
-          "Content-Type": "text/plain;charset=utf-8" 
-		  },
-		  body: JSON.stringify({ action: "get_pickup_points" })
-		});
-
-		g_pickup_points_data_from_server = await response.json();
-
-		//document.getElementById('g_customer_comments').value = JSON.stringify(g_pickup_points_data_from_server); // for debug
-
+		g_pickup_points_data_from_server = await post_to_server_with_busy_retry({ action: "get_pickup_points" });
+		
 		console.log("get_pickup_points() data from server:");
 		console.log(JSON.stringify(g_pickup_points_data_from_server));
-
 		
 		if (g_pickup_points_data_from_server.result != "ok") 
 		{
-		  console.log("get_pickup_points() failed.");
-		  console.log(JSON.stringify(g_pickup_points_data_from_server));
+		  console.log("ERROR: get_pickup_points() failed.");
+		  return;
 		}
+		
+		console.log("get_pickup_points() - result is ok :)");
+		
+		document.getElementById('g_pickup_points_select').innerHTML = `<option value="not_selected">יש לבחור נקודת איסוף</option>` + 
+			g_pickup_points_data_from_server.data.map(point => 
+			{
+				return ` <option value="${point.pickup_point_code}"> ${point.details_short} </option>`;
+			}).join('');
 	  } 
 	  catch (error) 
 	  {
-		console.log("get_pickup_points() failed: catch (error). ");
-		console.error("Request failed", error);
+		console.log("ERROR: get_pickup_points() failed: catch error = " + error);
+		throw error;
 	  }
 	}
+	
 
-
-	async function show_products()
+	function show_category()
 	{
-		await get_products();
-		render_top_section();
+		try
+		{
+			console.log("show_category() - start");
+			
+			show_products();
+			
+			if(g_show_categories === 1)
+				show_categories();
+		}
+		catch(error)
+		{
+		  console.log("ERROR: show_category() catch error:" + error);
+		}
+	}
+	
+
+	// Converts a single row array into an object keyed by column name, using the
+	// headers array returned from the server. This way, if the server changes the
+	// column order (or adds new columns), the code keeps working since it looks
+	// up fields by name instead of by fixed position.
+	function row_to_object(row, headers)
+	{
+		try
+		{
+			const obj = {};
+			headers.forEach((header_name, index) =>
+			{
+				obj[header_name] = row[index];
+			});
+			return obj;
+		}
+		catch(error)
+		{
+		  console.log("ERROR: row_to_object() catch error:" + error);
+		}
 	}
 
 
-	// NEW: decides whether the top section ("מתחם עליון") should show the categories
-	// grid or the product cards, and renders the right one.
-	function render_top_section()
+	function show_products()
 	{
-		if (g_show_categories === 1 && g_current_category_code === null)
+		try
 		{
-			render_categories();
-		}
-		else
-		{
-			render_product_cards();
-		}
-	}
+			if (!g_products_data_from_server || !g_products_data_from_server.data)
+				return;
 
+			const headers = g_products_data_from_server.data.headers;
+			const rows    = g_products_data_from_server.data.rows;
 
-	// NEW: renders the categories grid (2 per row), derived from the unique
-	// category_code values found among the products returned from the server.
-	function render_categories()
-	{
-		const categoriesMap = new Map();
+			const products_to_show = rows.filter(row =>
+			{
+				const product = row_to_object(row, headers);
 
-		g_products_data_from_server.data
-			.filter(product => product.show_on_shop === "1")
-			.forEach(product => {
-				if (!categoriesMap.has(product.category_code))
-				{
-					categoriesMap.set(product.category_code,
-					{
-						category_code: product.category_code,
-						category_name: product.category_name,
-						category_image: product.category_image
-					});
-				}
+				if (g_show_categories === 1)
+					return product.parent_category_code === g_current_category_code;
+				else
+					return true; // show all products regardless of category
 			});
 
-		document.getElementById('g_products_div').innerHTML = Array.from(categoriesMap.values())
-			.map(category => {
+			if (products_to_show.length === 0)
+			{
+				document.getElementById('g_products_div').innerHTML =	'<div style="text-align:center; color:#999; padding:20px;">אין מוצרים להצגה בקטגוריה זו</div>';
+				return;
+			}
+
+			const products_html = products_to_show.map(row =>
+			{
+				const product = row_to_object(row, headers);
+
+				const product_code            = product.product_code;
+				const product_name            = product.product_name;
+				const product_description     = product.product_description;
+				const product_price           = parseFloat(product.product_price_including_vat);
+				const amount_in_stock         = parseInt(product.amount_in_stock);
+				const thumbnail_image_file    = product.thumbnail_image_file;
+				const product_page_link   	  = product.product_page_link;
+				const net_content_gr_ml       = parseFloat(product.net_content_gr_ml);
+				const show_price_per_100_units       = parseInt(product.show_price_per_100_units);
+				const units_of_price_per_100_units       = product.units_of_price_per_100_units;
+				
+				const price_per_100_units = (net_content_gr_ml > 0 && !isNaN(product_price)) ? (product_price / net_content_gr_ml) * 100 : 0;
+				
+				const current_qty = get_product_qty_in_order(product_code);
+				const line_total  = (product_price * current_qty).toFixed(0);
+
+				const out_of_stock_note = amount_in_stock <= 0
+					? '<div style="color:#c0392b; font-size:12px; margin-top:4px;">אזל מהמלאי</div>'
+					: '';
+
+				// NEW: if a product_page_link exists, wrap the image and name in an <a> tag
+				const image_html = product_page_link
+					? `<a href="${product_page_link}" target="_blank" rel="noopener"><img src="${thumbnail_image_file}" alt="${product_name}" class="product-card-image"></a>`
+					: `<img src="${thumbnail_image_file}" alt="${product_name}" class="product-card-image">`;
+
+				const name_html = product_page_link
+					? `<a href="${product_page_link}" target="_blank" rel="noopener" style="color:inherit; text-decoration:none;">${product_name}</a>`
+					: product_name;
+
 				return `
-				<div class="category-card" onclick="onCategoryClick('${category.category_code}');">
-					<div class="category-title">${category.category_name}</div>
-					<img src="${category.category_image}" alt="${category.category_name}" class="category-image">
-				</div>`;
+					<div class="product-card" data-product-code="${product_code}">
+						${image_html}
+						<div class="product-card-info">
+							<div class="product-card-name">${name_html}</div>
+							<div class="product-card-subtitle">${product_description}, ${show_price_per_100_units === 1 ? price_per_100_units.toFixed(2) + ' ' + units_of_price_per_100_units : ''}</div>
+							<div class="product-card-price-row">
+								<span class="product-card-price">${product_price} ש"ח</span>
+								<div class="qty-control">
+									<button class="qty-btn" onclick="on_product_quantity_change('${product_code}', -1);" ${amount_in_stock <= 0 ? 'disabled' : ''}>-</button>
+									<input type="text" class="qty-input" value="${current_qty}" readonly>
+									<button class="qty-btn" onclick="on_product_quantity_change('${product_code}', 1);" ${amount_in_stock <= 0 ? 'disabled' : ''}>+</button>
+								</div>     
+							</div>
+							<div class="product-card-total">סה"כ: ${line_total} ש"ח</div>
+							${out_of_stock_note}
+						</div>
+					</div>`;
 			}).join('');
 
-		updateCart();
-	}
-
-
-	// NEW: called when a category card is clicked - switches the top section to
-	// show only the products that belong to that category.
-	function onCategoryClick(category_code)
-	{
-		g_current_category_code = category_code;
-		render_product_cards();
-	}
-
-
-	// NEW: called from the "back to categories" link shown above the product list
-	// when categories are enabled - returns to the categories grid.
-	function onBackToCategoriesClick()
-	{
-		g_current_category_code = null;
-		render_categories();
-	}
-
-
-	// NEW: renders the product cards (one per row). If categories are enabled,
-	// only products belonging to g_current_category_code are shown, and a "back
-	// to categories" link is added above the list. Quantities are restored from
-	// g_cart_quantities so a selection made earlier is not lost.
-	function render_product_cards()
-	{
-		const filteredProducts = g_products_data_from_server.data.filter(product => {
-			if (product.show_on_shop !== "1") return false;
-
-			if (g_show_categories === 1 && g_current_category_code !== null)
-			{
-				return product.category_code === g_current_category_code;
-			}
-
-			return true;
-		});
-
-		let backButtonHtml = '';
-		if (g_show_categories === 1 && g_current_category_code !== null)
-		{
-			backButtonHtml = `<div class="back-to-categories" onclick="onBackToCategoriesClick();">&#8594; חזרה לקטגוריות</div>`;
+			document.getElementById('g_products_div').innerHTML = products_html;
 		}
+		catch(error)
+		{
+		  console.log("ERROR: show_products() catch error:" + error);
+		}
+	}
+	
 
-		const cardsHtml = filteredProducts.map(product => {
+	// helper: looks up the current ordered quantity for a given product_code in g_order.products
+	function get_product_qty_in_order(product_code)
+	{
+		try
+		{
+			const existing = g_order.products.find(p => p.product_code === product_code);
+			return existing ? existing.amount : 0;
+		}
+		catch(error)
+		{
+		  console.log("ERROR: get_product_qty_in_order() catch error:" + error);
+		}
+	}	
+	
+	
+	function on_product_quantity_change(product_code, amount_to_add)
+	{
+		try
+		{
+			// look up the current stock level so we don't let the qty exceed it
+			const headers = (g_products_data_from_server && g_products_data_from_server.data)
+				? g_products_data_from_server.data.headers
+				: [];
+			const rows = (g_products_data_from_server && g_products_data_from_server.data)
+				? g_products_data_from_server.data.rows
+				: [];
 
-			const stock = parseInt(product.amount_in_stock, 10);
-			let qty = g_cart_quantities[product.product_code] || 0;
-			if (qty > stock)
+			const product_row = rows.find(row => row_to_object(row, headers).product_code === product_code);
+			const product = product_row ? row_to_object(product_row, headers) : null;
+			const amount_in_stock = product ? parseInt(product.amount_in_stock) : 0;
+
+			const existing = g_order.products.find(p => p.product_code === product_code);
+			const current_qty = existing ? existing.amount : 0;
+
+			let new_qty = current_qty + amount_to_add;
+			if (new_qty < 0) new_qty = 0;
+			if (new_qty > amount_in_stock) new_qty = amount_in_stock;
+
+			if (new_qty === 0)
 			{
-				qty = stock;
-				g_cart_quantities[product.product_code] = qty;
+				// remove from order entirely if it exists
+				if (existing)
+					g_order.products = g_order.products.filter(p => p.product_code !== product_code);
+			}
+			else if (existing)
+			{
+				existing.amount = new_qty;
+			}
+			else
+			{
+				g_order.products.push({ product_code: product_code, amount: new_qty });
 			}
 
-			const unitPrice = parseInt(product.product_price_including_vat, 10);
-			const bgColor = qty > 0 ? "yellow" : "white";
+			// re-render the product cards so the qty input / line total reflect the change
+			show_products();
 
-			return `
-			<div class="product-card" data-code="${product.product_code}">
-				<div class="product-bottom-row">
-					<a target=_new href="${product.product_page_link}"> <img src="${product.thumbnail_image_file}" alt="${product.product_name}" class="product-image"> </a>
-					<div class="product-details-col">
-						<div class="product-title">${product.product_name}</div>
-						<div class="product-description">${product.product_description}</div>
-						<div class="price-qty-total">
-							<div class="price"> 
-								<span class="unit-price">${product.product_price_including_vat}</span> ש"ח 
-							</div> 
-							<input type="hidden" value="${product.product_price_including_vat}" class="base-price"> 
-							<div class="quantity-box"> 
-								<button onclick="changeQuantity(this, 1);">+</button> 
-								<input type="number" value="${qty}" class="quantity-input" max="${stock}" style="background-color: ${bgColor};" readonly> 
-								<button onclick="changeQuantity(this, -1);">-</button> 
-							</div> 
-							<div class="total"> 
-								סה"כ: <span class="total-price">${qty * unitPrice}</span> ש"ח 
-							</div> 
-						</div>
-					</div>
-				</div>
-			</div>`;
-		}).join('');
+			show_cart();
+		}
+		catch(error)
+		{
+		  console.log("ERROR: on_product_quantity_change() catch error:" + error);
+		}
+	}	
+	
+	
+	function show_cart()
+	{
+		try
+		{
+			const cart_tbody = document.getElementById('g_cart_tbody');
 
-		document.getElementById('g_products_div').innerHTML = backButtonHtml + cardsHtml;
+			if (!g_order.products || g_order.products.length === 0)
+			{
+				cart_tbody.innerHTML = '<tr><td colspan="5" class="cart-empty-row">העגלה ריקה</td></tr>';
+				document.getElementById('g_grand_total').innerText = "0";
+				document.getElementById('g_grand_total_with_shipping').innerText = "0";
+				document.getElementById('g_discount_text').value = "";
+				return; 
+			}
 
-		updateCart();
+			const headers = (g_products_data_from_server && g_products_data_from_server.data)
+				? g_products_data_from_server.data.headers
+				: [];
+			const rows = (g_products_data_from_server && g_products_data_from_server.data)
+				? g_products_data_from_server.data.rows
+				: [];
+
+			let grand_total = 0; // raw total, no discount yet
+
+			const items_html = g_order.products.map(order_item =>
+			{
+				const product_row = rows.find(row => row_to_object(row, headers).product_code === order_item.product_code);
+				if (!product_row) return '';
+
+				const product = row_to_object(product_row, headers);
+
+				const product_code         = product.product_code;
+				const product_name         = product.product_name;
+				const product_price        = parseFloat(product.product_price_including_vat);
+				const thumbnail_image_file = product.thumbnail_image_file;
+
+				const qty        = order_item.amount;
+				const line_total_str = (product_price * qty).toFixed(0);
+
+				grand_total += product_price * qty; // just accumulate here
+
+				return `
+					<tr>
+						<td><img src="${thumbnail_image_file}" alt="${product_name}" class="cart-item-image"></td>
+						<td>${product_name}</td>
+						<td>
+							<div class="qty-control" style="justify-content:center;">
+								<button class="qty-btn" onclick="on_product_quantity_change('${product_code}', -1);">-</button>
+								<input type="text" class="qty-input" value="${qty}" readonly>
+								<button class="qty-btn" onclick="on_product_quantity_change('${product_code}', 1);">+</button>
+							</div>
+						</td>
+						<td>${product_price} ש"ח</td>
+						<td>${line_total_str} ש"ח</td>
+					</tr>`;
+			}).join('');
+
+			let grand_total_str = grand_total.toFixed(0);
+
+			const total_row_html = `
+				<tr class="cart-total-row">
+					<td></td>
+					<td>סה"כ</td>
+					<td></td>
+					<td></td>
+					<td>${grand_total_str} ש"ח</td>
+				</tr>`;
+
+			cart_tbody.innerHTML = items_html + total_row_html;
+			
+			if(g_discount > 0)
+			{
+				// apply the discount only for g_grand_total
+				if (g_discount_type_money_or_percentage === "money")
+				{
+					grand_total -= g_discount;
+					document.getElementById('g_discount_text').value = g_discount + '- ש"ח';
+				}
+				else if (g_discount_type_money_or_percentage === "percentage")
+				{
+					grand_total -= (grand_total * g_discount / 100);
+					document.getElementById('g_discount_text').value = "%" + g_discount + "-";
+				}
+
+				if (grand_total <= 0)
+					grand_total = 0;
+
+				grand_total_str = grand_total.toFixed(0); // toFixed() returns a string
+			}
+			else
+			{
+				document.getElementById('g_discount_text').value = "";
+			}
+
+				
+			document.getElementById('g_grand_total').innerText = grand_total_str;
+			
+			if(grand_total > 0)
+			{
+				if(g_order.delivery_type === "courier_to_home")
+				{
+					if(grand_total < g_configuration_data_from_server.minimum_order_price_for_courier_delivery_to_home)
+						document.getElementById('g_minimum_notice').innerHTML = "<tr><td>הזמנתך מתחת למינימום הנדרש למשלוח עד הבית באמצעות שליח</td></tr>";
+					else
+						document.getElementById('g_minimum_notice').innerHTML = "";
+					
+					grand_total_str = (grand_total + g_configuration_data_from_server.courier_delivery_to_home_price_for_customers_including_vat).toFixed(0); 
+				}
+				else
+				{
+					if(grand_total < g_configuration_data_from_server.minimum_order_price_for_delivery_to_pickup_point)
+						document.getElementById('g_minimum_notice').innerHTML = "<tr><td>הזמנתך מתחת למינימום הנדרש למשלוח אל נקודת איסוף עצמי ליד הבית</td></tr>";
+					else
+						document.getElementById('g_minimum_notice').innerHTML = "";
+
+					grand_total_str = (grand_total + g_configuration_data_from_server.delivery_to_pickup_point_price_for_customers_including_vat).toFixed(0); 
+				}
+			}
+
+			document.getElementById('g_grand_total_with_shipping').innerText = grand_total_str;
+		}
+		catch(error)
+		{
+		  console.log("ERROR: show_cart() catch error:" + error);
+		}
 	}
 	
 	
+	function show_categories()
+	{
+		try
+		{
+			if (!g_categories_data_from_server || !g_categories_data_from_server.data)
+				return;
+
+			const headers = g_categories_data_from_server.data.headers;
+			const rows    = g_categories_data_from_server.data.rows;
+
+			// show only categories whose parent_category matches the currently open category
+			const categories_to_show = rows.filter(row => row_to_object(row, headers).parent_category === g_current_category_code);
+
+			// the "home" tile is always shown first and always jumps back to root
+			const home_html = `
+				<div class="category-item" onclick="g_current_category_code='root'; show_category();">
+					<img src="https://i.ibb.co/601Zp24x/home.png" alt="עמוד ראשי" class="category-item-image">
+					<div class="category-item-name">עמוד ראשי</div>
+				</div>`;
+
+			const categories_html = categories_to_show.map(row =>
+			{
+				const category = row_to_object(row, headers);
+
+				const category_code         = category.category_code;
+				const category_name         = category.category_name;
+				// category.parent_category is used only for filtering above
+				const thumbnail_image_file  = category.thumbnail_image_file;
+
+				return `
+					<div class="category-item" onclick="g_current_category_code='${category_code}'; show_category();">
+						<img src="${thumbnail_image_file}" alt="${category_name}" class="category-item-image">
+						<div class="category-item-name">${category_name}</div>
+					</div>`;
+			}).join('');
+
+			document.getElementById('g_categories_div').innerHTML = home_html + categories_html;
+		}
+		catch(error)
+		{
+		  console.log("ERROR: show_categories() catch error:" + error);
+		}
+	}
+
+
 	async function get_products()
 	{
 	  try 
 	  {
-		console.log("get_products()");
+		console.log("get_products() - start");
+	
+		g_products_data_from_server = await post_to_server_with_busy_retry({ action: "get_products" });
 		
-		const response = await fetch(g_server_url, 
-		{
-		  method: "POST",
-		  headers: {
-          // Use text/plain to avoid a complex CORS preflight OPTIONS request
-          "Content-Type": "text/plain;charset=utf-8" 
-		  },
-		  body: JSON.stringify({ action: "get_products" })
-		});
-
-		g_products_data_from_server = await response.json();
+		// example response from server: {"result":"ok","data":{"headers":["product_code","parent_category_code","product_name","product_description","net_content_gr_ml","show_price_per_100_units","units_of_price_per_100_units","product_price_including_vat","amount_in_stock","thumbnail_image_file","product_page_link"],"rows":[["injera_sour_white_5_units","fruits","אינגרה מחמצת לבנה","מארז המכיל 5 יחידות","750","0","gr","50","10","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"],["injera_sour_red_5_units","vegetables","אינגרה מחמצת אדומה","מארז המכיל 5 יחידות","750","0","gr","50","10","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"],["tabasco_1_unit","root","טבסקו חריף","רוטב טבסקו חריף","50","1","ml","20","10","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"],["beef_stock","stocks","ציר בקר","ציר בקר ברוטב טרטר","500","1","gr","50","99","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png",""],["chicken_stock","stocks","ציר עוף","ציר עוף נראה כמו קוף","500","1","gr","50","99","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png",""],["chili_con_carne_1_serving","frozen","צילי קון קרנה מקסיקני","צילי קון קרנה מקסיקני, מנה אחת בנפח כ-500 סמ\"ק, לא חריף","500","1","gr","60","44","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png","https://www.rumyah-and-tamar.com/injera"]]}}
 
 		if (g_products_data_from_server.result != "ok") 
 		{
 		  console.log("ERROR: get_products() failed.");
 		  console.log(JSON.stringify(g_products_data_from_server));
+		  return;
 		}
+		
+		console.log("get_products() - result is ok :)");
 	  } 
 	  catch (error) 
 	  {
-		console.log("get_products() failed: catch (error). ");
-		console.error("Request failed", error);
+		console.log("ERROR: get_products() failed: catch error = " + error);
+		throw error;
 	  }
 	}
 
@@ -337,27 +640,28 @@
 	{
 	  try 
 	  {
-		console.log("get_configuration_data()");
+		console.log("get_configuration_data() - start");
 		
-		const response = await fetch(g_server_url, 
-		{
-		  method: "POST",
-		  headers: {
-          // Use text/plain to avoid a complex CORS preflight OPTIONS request
-          "Content-Type": "text/plain;charset=utf-8" 
-		  },
-		  body: JSON.stringify({ action: "get_configuration_data" })
-		});
-
-		g_configuration_data_from_server = await response.json();
+		g_configuration_data_from_server = await post_to_server_with_busy_retry({action:"get_configuration_data"});
 		
-		// example response: {"result":"ok","upcoming_delivery_date_text":"שימו לב: מועד האספקה הקרוב הוא יום שישי ה 01.07.2026. במועד האספקה הקרוב יסופקו הזמנות ששולמו עד ליום חמישי ה 30.06.2026 לפנות בוקר. הזמנות ששולמו לאחר מכן יסופקו במועד האספקה הבא.","show_categories":"1","upcoming_courier_delivery_date_text":"משלוחים עד הבית יתבצעו ביום חמישי 2026-07-20 משעה 08:00 ועד שעה 21:00.","minimum_order_price_for_courier_delivery_to_home":"99","courier_delivery_to_home_price_for_customers_including_vat":"34"}
+		// example response: {"result":"ok","upcoming_delivery_date_text":"מועד האספקה הקרוב הוא יום שישי ה 01.07.2026. הזמנות עד רביעי בלילה.","show_categories":"1","upcoming_courier_delivery_date_text":"משלוחים עד הבית יתבצעו ביום חמישי 2026-07-20 משעה 08:00 ועד שעה 21:00. הזמנות עד רביעי בלילה.","minimum_order_price_for_courier_delivery_to_home":"99","courier_delivery_to_home_price_for_customers_including_vat":"34","minimum_order_price_for_delivery_to_pickup_point":"20","delivery_to_pickup_point_price_for_customers_including_vat":"15"}
 
 		if (g_configuration_data_from_server.result != "ok") 
 		{
 		  console.log("ERROR: get_configuration_data() failed.");
 		  console.log(JSON.stringify(g_configuration_data_from_server));
+		  return;
 		}
+		
+		console.log("get_configuration_data() - result is ok :)");
+		
+		g_configuration_data_from_server.delivery_to_pickup_point_price_for_customers_including_vat = Number(g_configuration_data_from_server.delivery_to_pickup_point_price_for_customers_including_vat);
+		
+		g_configuration_data_from_server.minimum_order_price_for_delivery_to_pickup_point = Number(g_configuration_data_from_server.minimum_order_price_for_delivery_to_pickup_point);
+		
+		g_configuration_data_from_server.minimum_order_price_for_courier_delivery_to_home = Number(g_configuration_data_from_server.minimum_order_price_for_courier_delivery_to_home);
+		
+		g_configuration_data_from_server.courier_delivery_to_home_price_for_customers_including_vat = Number(g_configuration_data_from_server.courier_delivery_to_home_price_for_customers_including_vat);
 		
 		g_show_categories = parseInt(g_configuration_data_from_server.show_categories);
 		document.getElementById('g_pickup_delivery_date_info').innerHTML = g_configuration_data_from_server.upcoming_delivery_date_text;
@@ -365,11 +669,10 @@
 	  } 
 	  catch (error) 
 	  {
-		console.log("get_configuration_data() failed: catch (error). ");
-		console.error("Request failed", error);
+		console.log("ERROR: get_configuration_data() failed: catch error = " + error);
+		throw error;
 	  }
 	}
-
 
 
 	async function get_categories()
@@ -377,51 +680,53 @@
 	  try 
 	  {
 		console.log("get_categories()");
-		
-		const response = await fetch(g_server_url, 
-		{
-		  method: "POST",
-		  headers: {
-          // Use text/plain to avoid a complex CORS preflight OPTIONS request
-          "Content-Type": "text/plain;charset=utf-8" 
-		  },
-		  body: JSON.stringify({ action: "get_categories" })
-		});
 
-		g_categories_data_from_server = await response.json();
+		g_categories_data_from_server = await post_to_server_with_busy_retry({ action: "get_categories" });
 		
-		// example response: {"result":"ok","records":{"headers":["category_code","category_name","parent_category","hide_category_and_products","thumbnail_image_file"],"rows":[["fruits","ירקות","vegi","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegetables","פירות","vegi","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["frozen","קפואים","","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegi","מהצומח","","0","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"]]}}
+		// example response: {"result":"ok","data":{"headers":["category_code","category_name","parent_category","thumbnail_image_file"],"rows":[["fruits","ירקות","vegi","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegetables","פירות","vegi","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["frozen","קפואים","root","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"],["vegi","מהצומח","root","https://i.ibb.co/0dSgp9x/injera-sour-white-5-units-thumbnail.png"]]}}
 
-		if (g_configuration_data_from_server.result != "ok") 
+		if (g_categories_data_from_server.result != "ok") 
 		{
 		  console.log("ERROR: get_categories() failed.");
 		  console.log(JSON.stringify(g_categories_data_from_server));
+		  return;
 		}
+		
+		console.log("get_categories() - result is ok :)");
+		
 	  } 
 	  catch (error) 
 	  {
-		console.log("get_categories() failed: catch (error). ");
-		console.error("Request failed", error);
+		console.log("ERROR: get_categories() failed: catch error = " + error);
+		throw error;
 	  }
 	}
 
 
 	function getServerUrl() 
 	{
-		const xhr = new XMLHttpRequest();
-		const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a chached version
-		if(g_work_mode == "dev")
-			xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
-		else
-			xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
-		xhr.send();
-		if (xhr.status === 200) 
+		try
 		{
-			return xhr.responseText.trim();
-		} 
-		else 
+			const xhr = new XMLHttpRequest();
+			const cacheBuster = new Date().getTime(); // unique value each call to prevent from getting a chached version
+			if(g_work_mode == "dev")
+				xhr.open("GET", "https://beensman.github.io/rnt-dev/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			else
+				xhr.open("GET", "https://beensman.github.io/rnt/server_url.txt?v=" + cacheBuster, false); // false = synchronous
+			xhr.send();
+			if (xhr.status === 200) 
+			{
+				return xhr.responseText.trim();
+			} 
+			else 
+			{
+				return "";
+			}
+		}
+		catch(error)
 		{
-			return "";
+		  console.log("ERROR: getServerUrl() catch error:" + error);
+		  return "";
 		}
 	}
 
@@ -444,40 +749,65 @@
 	}
 
 
-	// NEW: selects "home_delivery" as the default delivery method when the page loads
-	function set_default_delivery_method()
-	{
-		const homeDeliveryCard = document.querySelector('.delivery-method-option[data-value="home_delivery"]');
-		if (homeDeliveryCard)
-		{
-			onDeliveryMethodChanged(homeDeliveryCard);
-		}
-	}
-	
-
 	async function on_page_load()
 	{
-		showOverlay("טוען נתונים מהשרת ...");
-		
-		set_default_delivery_method();
-		
-		g_server_url = getServerUrl();
-		if(g_server_url == "")
+		try
 		{
-			console.log("לא מצליח להתחבר אל שרת הקבצים, יש לרענן את העמוד!");
-			return;
+			showOverlay("טוען נתונים מהשרת ...");
+			
+			set_initial_field_states();
+			
+			// show "delivery to home "
+			on_change_delivery_type("to_home");		
+			
+			g_server_url = getServerUrl();
+			if(g_server_url == "")
+			{
+				alert("לא מצליח להתחבר אל שרת הקבצים, לחץ על אישור לנסות שנית");
+				hideOverlay();
+				location.reload();
+			}
+			
+			console.log("g_server_url = " + g_server_url);
+			
+			// await new Promise(resolve => setTimeout(resolve, 1000)); // pause execution, sleep for 1 second (1000 miliseconds) - same code as bellow - save for future use
+			
+			await new Promise((resolve, reject) => { setTimeout(() => { resolve(); }, 200); }); // pause execution, sleep for 200 milliseconds - save for future use - this is mandatory to allow  getServerUrl() XHR to finish properly, without this we have race issues (google chrome bug)
+			
+			await Promise.allSettled([get_configuration_data(), get_categories(), get_products(), get_pickup_points(), get_delivery_cities()]);
+			
+			await new Promise(resolve => setTimeout(resolve, 200)); // sleep 200  ms
+			
+			if(g_configuration_data_from_server.result != "ok" || g_categories_data_from_server.result != "ok" || g_products_data_from_server.result != "ok" || g_pickup_points_data_from_server.result != "ok" || g_delivery_cities_data_from_server.result != "ok")
+			{
+				alert("בשל בעיות תקשורת לא הצלחנו לקבל מהשרת נתונים חיוניים, לחץ על אישור לנסות שנית");
+				hideOverlay();
+				//location.reload();
+			}
+			
+			show_category();
+
+			document.getElementById('g_pickup_tab').innerHTML = "איסוף עצמי ליד הבית (" + g_configuration_data_from_server.delivery_to_pickup_point_price_for_customers_including_vat.toFixed(0) + " שח)" + "<br>" + "מינימום הזמנה (" + g_configuration_data_from_server.minimum_order_price_for_delivery_to_pickup_point + " שח)";
+			
+			document.getElementById('g_to_home_tab').innerHTML = "משלוח עד הבית (" + g_configuration_data_from_server.courier_delivery_to_home_price_for_customers_including_vat.toFixed(0) + " שח)" + "<br>" + "מינימום הזמנה (" + g_configuration_data_from_server.minimum_order_price_for_courier_delivery_to_home + " שח)";
+		
+			hideOverlay();
+			
+			fill_coupon_code_from_url();
+			
+			if(g_work_mode === "production")
+			{
+				// set timer to reload the page after 6 hours - in case the user left the web site open for a long time, we need to make sure he get the updated prices and stocks
+				setTimeout(on_page_load, 21600000); // 6*60*60*1000=21600000
+			}
 		}
-		
-		console.log(g_server_url);
-		
-		await Promise.all([get_configuration_data(), get_categories(), show_products(), show_pickup_points(), get_delivery_cities()]);
-		
-		hideOverlay();
-		
-		fill_coupon_code_from_url();
-		
-		// set timer to reload the page after 6 hours - in case the user left the web site open for a long time, we need to make sure he get the updated prices and stocks
-		setTimeout(on_page_load, 21600000); // 6*60*60*1000=21600000
+		catch(error)
+		{
+			console.log("ERROR: on_page_load() catch error:" + error);
+			alert("בשל בעיות תקשורת לא הצלחנו לקבל מהשרת נתונים חיוניים, לחץ על אישור לנסות שנית");
+			hideOverlay();
+			//location.reload();
+		}
 	}
 
 
@@ -485,372 +815,389 @@
 	{
 	  try
 	  {
-		console.log("get_delivery_cities()");
-		
-		const response = await fetch(g_server_url,
-		{
-		  method: "POST",
-		  headers: { "Content-Type": "text/plain;charset=utf-8" },
-		  body: JSON.stringify({ action: "get_delivery_cities" })
-		});
-
-		g_delivery_cities_data_from_server = await response.json();
-		
+		console.log("get_delivery_cities() - start");
+	
+		g_delivery_cities_data_from_server = await post_to_server_with_busy_retry({ action: "get_delivery_cities" });
+	
 		// example response:  {"result":"ok","records":{"headers":["city_code","city_name"],"rows":[["tel-aviv","תל אביב"],["raanana","רעננה"],["modiin","מודיעין"]]}}
 
-		if (result.result !== "ok")
+		if(g_delivery_cities_data_from_server.result !== "ok")
 		{
-		  console.error("get_delivery_cities() failed:", result.text);
+		  console.log("get_delivery_cities() failed");
 		  return;
 		}
+		
+		console.log("get_delivery_cities() - result is ok :)");
+		
+		console.log("get_delivery_cities() data from server:");
+		console.log(JSON.stringify(g_delivery_cities_data_from_server));
+
+		const headers = g_delivery_cities_data_from_server.records.headers;
+		const rows    = g_delivery_cities_data_from_server.records.rows;
+
+		// populate the cities drop down
+		document.getElementById('g_city_select').innerHTML = `<option value="not_selected">יש לבחור עיר</option>` + 
+			rows.map(row => 
+			{
+				const city = row_to_object(row, headers);
+				return ` <option value="${city.city_code}"> ${city.city_name} </option>`;
+			}).join('');
+		
 	  }
 	  catch (err)
 	  {
-		console.error("get_delivery_cities() failed:", err);
+		console.log("ERROR: get_delivery_cities() catch() err:" + err);
+		throw err;
 	  }
 	}
 
 
-	function changeQuantity(btn, amount) 
-	{
-		const card = btn.closest('.product-card');
-		const productCode = card.getAttribute('data-code');
-		const input = card.querySelector('.quantity-input');
-		const totalPriceElement = card.querySelector('.total-price');
-		const unitPrice = parseInt(card.querySelector('.base-price').value);
-		
-		let newQuantity = parseInt(input.value) + amount;
-		
-		if (newQuantity < 0) newQuantity = 0;
-		
-		const maxStock = parseInt(input.max);
-		if (newQuantity > maxStock) newQuantity = maxStock;
-		
-		input.value = newQuantity;
-		totalPriceElement.innerText = newQuantity * unitPrice;
-
-		input.style.backgroundColor = newQuantity > 0 ? "yellow" : "white";
-
-		// NEW: persist the quantity so it is not lost when navigating between categories
-		g_cart_quantities[productCode] = newQuantity;
-		
-		updateGrandTotal();
-		updateCart();
-	}
-	
-
-	// CHANGED: now sums over g_cart_quantities + the full product list (instead of scanning
-	// the DOM), so the total is correct even when only one category's cards are on screen.
-	function updateGrandTotal()
-	{
-		let grand = 0;
-
-		for (const product_code in g_cart_quantities)
-		{
-			const qty = g_cart_quantities[product_code];
-			if (qty > 0)
-			{
-				const product = g_products_data_from_server.data.find(p => p.product_code === product_code);
-				if (product)
-				{
-					grand += qty * parseInt(product.product_price_including_vat, 10);
-				}
-			}
-		}
-
-		document.getElementById('g_grand_total').innerText = grand;
-	}
-
-
-	// CHANGED: builds/refreshes the shopping-cart table located between the products
-	// section and the rest of the form. Now reads from g_cart_quantities + the full
-	// product list (instead of scanning the DOM), so it stays correct regardless of
-	// which category's products are currently shown on screen.
-	function updateCart()
-	{
-		const tbody = document.getElementById('g_cart_tbody');
-		if (!tbody) return;
-
-		let rowsHtml = '';
-		let totalSum = 0;
-
-		for (const product_code in g_cart_quantities)
-		{
-			const qty = g_cart_quantities[product_code];
-			if (qty > 0)
-			{
-				const product = g_products_data_from_server.data.find(p => p.product_code === product_code);
-				if (!product) continue;
-
-				const unitPrice = parseInt(product.product_price_including_vat, 10);
-				const lineTotal = qty * unitPrice;
-
-				totalSum += lineTotal;
-
-				rowsHtml += `
-					<tr>
-						<td><img src="${product.thumbnail_image_file}" alt="${product.product_name}" class="cart-item-image"></td>
-						<td>${product.product_name}</td>
-						<td>${qty}</td>
-						<td>${unitPrice}</td>
-						<td>${lineTotal}</td>
-					</tr>`;
-			}
-		}
-
-		if (rowsHtml === '')
-		{
-			tbody.innerHTML = `<tr><td colspan="5" class="cart-empty-row">העגלה ריקה</td></tr>`;
-			return;
-		}
-
-		rowsHtml += `
-			<tr class="cart-total-row">
-				<td colspan="4">סך מחיר המוצרים</td>
-				<td>${totalSum}</td>
-			</tr>`;
-
-		tbody.innerHTML = rowsHtml;
-	}
-
-
-	function onPickupPointChanged(sel)
-	{
-		if (sel.value === "not_selected")
-			sel.style.backgroundColor = "yellow";
-		else
-			sel.style.backgroundColor = "white";
-	}
-
-
-	// NEW: toggles between the "pickup point" section and the "home delivery address" section
-	// depending on the delivery method the user selected. The delivery method is now chosen
-	// by clicking one of the two card-style buttons (no separate radio input elements).
-	// NOTE: this only handles the visual show/hide for now. The actual order-submission
-	// logic (adding 30 ש"ח for home delivery, saving the address fields into g_order, etc.)
-	// will be added in the next stage.
-	function onDeliveryMethodChanged(card)
-	{
-		const optionsBox = document.getElementById('g_delivery_method_options');
-		const deliveryMethod = card.getAttribute('data-value');
-
-		// mark the clicked card as selected, and un-mark its sibling
-		optionsBox.querySelectorAll('.delivery-method-option').forEach(c => c.classList.remove('selected'));
-		card.classList.add('selected');
-
-		// once a choice is made, remove the "not selected yet" highlight from the options box
-		optionsBox.style.backgroundColor = "white";
-
-		const pickupSection = document.getElementById('g_pickup_section');
-		const deliverySection = document.getElementById('g_delivery_section');
-
-		if (deliveryMethod === "pickup")
-		{
-			pickupSection.style.display = "block";
-			deliverySection.style.display = "none";
-		}
-		else if (deliveryMethod === "home_delivery")
-		{
-			pickupSection.style.display = "none";
-			deliverySection.style.display = "block";
-		}
-		else
-		{
-			pickupSection.style.display = "none";
-			deliverySection.style.display = "none";
-		}
-	}
-
-
-	// NEW: placeholder for the "החל קופון" button.
-	// The real validation / discount calculation will be added in a later stage.
-	function on_apply_coupon_click()
-	{
-		console.log("on_apply_coupon_click() - to be implemented in next stage");
-		alert("פונקציונליות החלת הקופון תתווסף בשלב הבא");
-	}
-
-
-	async function create_new_order()
-	{
-	  try
-	  {
-		const result = await post_to_server_with_busy_retry(
-			{ action: "create_new_order", order: g_order },
-			"השרת עמוס, מנסה שוב, אנא המתינו..."
-		);
-		return result;
-	  }
-	  catch (err)
-	  {
-		console.log("ERROR: create_new_order() catch error:" + err.toString());
-		return { result: "error", text: "" };
-	  }
-	}	
-	
 	
 	async function on_main_button_click(btn)
 	{
-		showOverlay("הזמנתך בבדיקה");
+		try
+		{
+			console.log("on_main_button_click() - start");
 		
-		g_order.customer_name = document.getElementById('g_customer_name').value;
-		g_order.customer_phone = document.getElementById('g_phone_input').value;
-		//g_order.customer_email = document.getElementById('g_customer_email').value;
-		g_order.customer_comments = document.getElementById('g_customer_comments').value;
-		g_order.pickup_point_code = document.getElementById('g_pickup_points_select').value;
-		g_order.coupon_code = document.getElementById('g_coupon_code_input').value;
-		g_order.verification_code = document.getElementById('g_verification_code').value;
-		g_order.terms_accepted      = document.getElementById('g_terms_checkbox').checked;
-		g_order.sms_reminder_opt_in = document.getElementById('g_sms_reminder_checkbox').checked;
-		g_order.marketing_opt_in    = document.getElementById('g_marketing_opt_in_checkbox').checked;
-					
-		g_order.products = [];// Clear the array first to avoid duplicates if the button is clicked multiple times
+			showOverlay("הזמנתך בבדיקה"); 
+			
+			if(!g_order.products || g_order.products.length === 0)
+			{
+				hideOverlay();
+				alert("עגלת הקניות ריקה, יש לבחור מוצרים");
+				return;
+			}
+			
+			// does it meet the minimum order - at this stage we check it only on the server
+			
+			g_order.customer_name = document.getElementById('g_customer_name').value;
+			g_order.customer_phone = document.getElementById('g_phone_input').value;
+			g_order.customer_comments = document.getElementById('g_customer_comments').value;
+			g_order.coupon_code = document.getElementById('g_coupon_code_input').value;
+			g_order.verification_code = document.getElementById('g_verification_code').value;
+			g_order.terms_accepted      = document.getElementById('g_terms_checkbox').checked;
+			g_order.sms_reminder_opt_in = document.getElementById('g_sms_reminder_checkbox').checked;
+			g_order.marketing_opt_in    = document.getElementById('g_marketing_opt_in_checkbox').checked;
+			
+			if(g_order.delivery_type == "pickup_point")
+			{
+				g_order.pickup_point_code = document.getElementById('g_pickup_points_select').value;
+			}
+			else
+			{
+				g_order.customer_city_code    = document.getElementById('g_city_select').value;
+				g_order.customer_street    = document.getElementById('g_street_input').value;
+				g_order.customer_building_number    = document.getElementById('g_house_number_input').value;
+				g_order.customer_apartment_number    = document.getElementById('g_apartment_number_input').value;
+			}
+			
+			console.log("on_main_button_click()  g_order = " + JSON.stringify(g_order));
+			
+			// make sure he filled all the required fields
 
-		// CHANGED: build the order's product list from g_cart_quantities (instead of scanning
-		// the DOM), since not all selected products are necessarily on screen right now.
-		for (const product_code in g_cart_quantities)
-		{
-			const quantity = g_cart_quantities[product_code];
+			if(g_order.terms_accepted != true)
+			{
+				hideOverlay();
+				alert("יש לקבל את התקנון ואת תנאי השימוש באתר");
+				return;
+			}
 
-			// Only insert products that the user actually selected (amount > 0)
-			if (quantity > 0)
+			if(g_order.customer_name == "")
 			{
-				g_order.products.push({
-					product_code: product_code,
-					amount: quantity
-				});
+				hideOverlay();
+				alert("יש למלא שם מלא");
+				return;
 			}
-		}
-		
-		//document.getElementById('g_customer_comments').value = JSON.stringify(g_order); // for debug
-		
-		let result = await create_new_order();
-		
-		hideOverlay();
-		
-		// result.result is only set on "error" (run time error thrown server side) - on a normal create_new_order response there is no result.result field
-		if (result.result === "error")
-		{
-			console.log("ERROR: on_main_button_click() server error:" + JSON.stringify(result));
-			alert("ארעה שגיאה בשרת, אנא נסו שוב");
-			return;
-		}
-		
-		if (result.is_success != 1)
-		{
-			if (result.did_approve_user_agreement == 0)
+
+			if(g_order.customer_phone == "")
 			{
-				alert("יש לאשר את תנאי השימוש");
+				hideOverlay();
+				alert("יש למלא מספר טלפון ישראלי");
+				return;
 			}
-			else if (result.is_verification_code_valid == 0)
+
+			if(g_order.verification_code == "")
 			{
-				alert("הקוד שהוזן אינו תקין יש לאמת את מספר הטלפון וללחוץ על שלחו לי קוד אימות");
+				hideOverlay();
+				alert("יש למלא קוד אימות");
+				return;
 			}
-			else if (result.is_a_valid_pickup_point == 0)
+
+			if(g_order.delivery_type == "pickup_point")
 			{
-				alert("יש לבחור נקודת איסוף");
+				if(g_order.pickup_point_code == "not_selected")
+				{
+					hideOverlay();
+					alert("יש לבחור נקודה לאיסוף עצמי");
+					return;
+				}
 			}
-			else if (result.is_a_product_out_of_stock == 1)
+			else // delivery_type is "courier_to_home"
 			{
-				alert("אחד או יותר מהמוצרים שנבחרו אזל מהמלאי, אנא רעננו את העמוד ונסו שוב");
+				if(g_order.customer_city_code == "not_selected" || g_order.customer_street == "" || g_order.customer_building_number == "")
+				{
+					hideOverlay();
+					alert("יש למלא את פרטי המשלוח");
+					return;
+				}
 			}
-			else if (result.is_a_valid_coupon == 0)
+
+			
+			hideOverlay();
+			
+			showOverlay("השרת מטפל בהזמנתך"); 
+
+			const result = await post_to_server_with_busy_retry({ action: "create_new_order", order: g_order },	"השרת עמוס, מנסה שוב, אנא המתינו...");
+			
+			console.log("on_main_button_click() - result = " + JSON.stringify(result));
+			
+			// example result:  {"is_success":0,"is_a_new_customer":0,"did_approve_user_agreement":1,"is_verification_code_valid":1,"is_a_valid_delivery_type":1,"is_a_valid_coupon":1,"is_a_valid_pickup_point":1,"is_a_valid_delivery_city":1,"is_order_below_minimum_price_for_courier_delivery":1,"is_order_below_minimum_price_for_pickup_point_delivery":0,"is_a_product_out_of_stock":0,"total_sum_without_discount":20,"discount":0,"discount_type_money_or_percentage":"","courier_delivery_fee":0,"total_price_to_be_paid":0,"clearance_page_url":""}
+			
+			hideOverlay();
+			
+			
+			if (result.result != "ok")
 			{
-				alert("קוד הקופון שהוזן אינו תקין");
-			}
-			else
-			{
-				alert("ארעה שגיאה, אנא נסו שוב");
+				if (result.did_approve_user_agreement == 0)
+				{
+					alert("יש לאשר את תנאי השימוש");
+				}
+				else if (result.is_verification_code_valid == 0)
+				{
+					alert("הקוד שהוזן אינו תקין יש לאמת את מספר הטלפון וללחוץ על שלחו לי קוד אימות");
+				}
+				else if (result.is_a_valid_pickup_point == 0)
+				{
+					alert("יש לבחור נקודת איסוף");
+				}
+				else if (result.is_a_product_out_of_stock == 1)
+				{
+					alert("אחד או יותר מהמוצרים שנבחרו אזל מהמלאי, אנא רעננו את העמוד ונסו שוב");
+				}
+				else if (result.is_a_valid_coupon == 0)
+				{
+					alert("קוד הקופון שהוזן אינו תקין");
+				}
+				else if (result.is_order_below_minimum_price_for_courier_delivery == 1)
+				{
+					alert("הזמנתך מתחת למינימום הנדרש למשלוח עד הבית באמצעות שליח");
+				}
+				else if (result.is_order_below_minimum_price_for_pickup_point_delivery == 1)
+				{
+					alert("הזמנתך מתחת למינימום הנדרש למשלוח אל נקודה לאיסוף עצמי");
+				}
+				else 
+				{
+					console.log("ERROR: on_main_button_click() server error:" + JSON.stringify(result));
+					alert("ארעה שגיאה, אנא נסו שוב בעוד מספר שניות");
+				}
+				
+				return;
 			}
 			
-			return;
-		}
-		
-		// is_success == 1 from here on
-		
-		if (result.discount > 0)
-		{
-			if (result.discount_type_money_or_percentage === "percentage")
-			{
-				document.getElementById('g_discount_text').value = result.discount + "%";
-			}
-			else
-			{
-				document.getElementById('g_discount_text').value = result.discount + ' ש"ח';
-			}
-			/* to be deleted after testing
-			let final_total = result.total_sum_without_discount;
-			if (result.discount_type_money_or_percentage === "percentage")
-			{
-				final_total = result.total_sum_without_discount - (result.total_sum_without_discount * (result.discount / 100));
-			}
-			else
-			{
-				final_total = result.total_sum_without_discount - result.discount;
-			}
-			if (final_total < 0) final_total = 0; */
+			// result == "ok" from here on
 			
-			document.getElementById('g_grand_total').innerText = result.total_price_to_be_paid;
+			if (result.discount > 0)
+			{
+				if (result.discount_type_money_or_percentage === "percentage")
+				{
+					document.getElementById('g_discount_text').value = "%" + result.discount + "-";
+				}
+				else
+				{
+					document.getElementById('g_discount_text').value = result.discount + '- ש"ח';
+				}
+				
+				document.getElementById('g_grand_total').innerText = result.total_price_to_be_paid;
+				
+				alert("הקופון נקלט בהצלחה והמחיר עודכן בהתאם");
+			}
 			
-			alert("הקופון נקלט בהצלחה והמחיר עודכן בהתאם");
+			if(result.clearance_page_url == "" || result.total_price_to_be_paid == 0) // it means the coupon covered all the payment and there is nothing left to pay
+			{
+				alert("הזמנתך נתקבלה בהצלחה, נשלחו אליך הפרטים המלאים של נקודת האיסוף, תודה על קנייתך");
+				return;
+			}
+			
+			alert("הזמנתך נתקבלה בהצלחה, מיד תועבר אל עמוד התשלום, לאחר שהמערכת שלנו תקבל אישור על התשלום ישלחו אליך הפרטים המלאים של נקודת האיסוף, תודה על קנייתך");
+			
+			// redirect him to the clearance page
+			window.location.href = result.clearance_page_url;
 		}
-		
-		if(result.clearance_page_url == "" || result.total_price_to_be_paid == 0) // it means the coupon covered all the payment and there is nothing left to pay
+		catch(error)
 		{
-			alert("הזמנתך נתקבלה בהצלחה, נשלחו אליך הפרטים המלאים של נקודת האיסוף, תודה על קנייתך");
-			return;
+		  console.log("ERROR: on_main_button_click() catch error:" + error);
 		}
-		
-		alert("הזמנתך נתקבלה בהצלחה, מיד תועבר אל עמוד התשלום, לאחר שהמערכת שלנו תקבל אישור על התשלום ישלחו אליך הפרטים המלאים של נקודת האיסוף, תודה על קנייתך");
-		
-		// redirect him to the clearance page
-		window.location.href = result.clearance_page_url;
 	}
 
 
-	async function sendSmsVerification() 
-	{
-	  try 
-	  {
-		showOverlay("המערכת שולחת אליך הודעה עם קוד אימות");
-		
-		const targetPhone = document.getElementById('g_phone_input').value
-		
-		const result = await post_to_server_with_busy_retry(
-			{ action: "send_verification_code_sms", recipient: targetPhone },
-			"השרת עמוס, מנסה שוב, אנא המתינו..."
-		);
-		
-		hideOverlay();
-
-		if (result.result === "ok") 
-		{
-			alert("בשניות הקרובות תתקבל הודעה עם קוד אימות במכשיר הטלפון הנייד שלך, יש להזין את הקוד במקום המיועד לכך");
-			console.log("Verification code sent to " + targetPhone);
-		} 
-		else 
-		{
-			alert("שליחת הודעת האימות אל המספר " + targetPhone + " נכשלה! יש לבדוק את המספר ולנסות שנית.");
-			console.log("ERROR: sendSmsVerification() failed, result:" + JSON.stringify(result));
-		}
-	  } 
-	  catch (error) 
-	  {
-		console.log("ERROR: sendSmsVerification() catch error:" + error.toString());
-	  }
-	}
-	
-	function on_click_send_verification_code()
+	async function on_click_send_verification_code()
 	{
 		try
 		{
-			sendSmsVerification();
+			console.log("on_click_send_verification_code() - start");
+			 
+			showOverlay("המערכת שולחת אליך הודעה עם קוד אימות");
 			
-			// disable the button and make it a counter from 20 to 1 (20 seconds) then allow to send another verification code ???
+			const targetPhone = document.getElementById('g_phone_input').value;
+			
+			const result = await post_to_server_with_busy_retry(
+				{ action: "send_verification_code_sms", recipient: targetPhone },
+				"השרת עמוס, מנסה שוב, אנא המתינו..."
+			);
+			
+			hideOverlay();
+
+			if (result.result === "ok") 
+			{
+				showOverlay("בשניות הקרובות תתקבל הודעה עם קוד אימות במכשיר הטלפון הנייד שלך, יש להזין את הקוד במקום המיועד לכך");
+				console.log("Verification code sent to " + targetPhone);
+				await new Promise(resolve => setTimeout(resolve, 3000));
+				hideOverlay();
+			} 
+			else 
+			{
+				showOverlay("שליחת הודעת האימות אל המספר " + targetPhone + " נכשלה! יש לבדוק את המספר ולנסות שנית.");
+				console.log("ERROR: sendSmsVerification() failed, result:" + JSON.stringify(result));
+				await new Promise(resolve => setTimeout(resolve, 5000));
+				hideOverlay();
+			}
 		}
 		catch(error)
 		{
 		  console.log("ERROR: on_click_send_verification_code() catch error:" + error);
+		}
+	}
+
+	async function on_click_apply_coupon()
+	{
+		try
+		{
+			showOverlay("המערכת בודקת את הקופון");
+
+			g_discount = 0;
+			g_discount_type_money_or_percentage = "";
+			
+			const targetPhone = document.getElementById('g_phone_input').value;
+			
+			const coupon_code_input = document.getElementById('g_coupon_code_input').value;
+			
+			const verification_code_input = document.getElementById('g_verification_code').value; 
+			
+			const result = await post_to_server_with_busy_retry(
+				{ action: "is_a_valid_coupon", coupon_code: coupon_code_input, customer_phone_number: targetPhone, verification_code: verification_code_input },
+				"השרת עמוס, מנסה שוב, אנא המתינו..."
+			);
+			
+			//example response: {"result":"ok","validity_results":{"is_valid":0,"is_a_new_customer":0,"discount":0,"discount_type_money_or_percentage":""}}
+			
+			hideOverlay();
+
+			if (result.result === "ok") 
+			{
+				if(result.validity_results.is_valid !== 1)
+				{
+					g_discount = 0;
+					
+					alert("מצטערים ומתנצלים, קוד הקופון שהוזן אינו תקין, או שאזל, או שאינו בתוקף, או שאין לכם זכאות להשתמש בו. הזמינו כעת ותקבלו מוצרים איכותיים ובריאים, זו המתנה האמיתית! הרשמו גם לקבלת הודעות מאיתנו ואולי תופתעו לטובה.");
+					console.log("מצטערים ומתנצלים, קוד הקופון שהוזן אינו תקין, או שאזל, או שאינו בתוקף, או שאין לכם זכאות להשתמש בו. הזמינו כעת ותקבלו מוצרים איכותיים ובריאים, זו המתנה האמיתית! הרשמו גם לקבלת הודעות מאיתנו ואולי תופתעו לטובה.");
+					
+					show_cart();
+					
+					return;
+				}
+
+				
+				if(result.validity_results.discount_type_money_or_percentage === "money" || result.validity_results.discount_type_money_or_percentage === "percentage")
+				{
+					g_discount = result.validity_results.discount;
+					g_discount_type_money_or_percentage = result.validity_results.discount_type_money_or_percentage;
+
+					alert("הקופון נמצא תקין, הסכום לתשלום עודכן בהתאם, שימו לב כי חלק מהקופונים מוגבלים בזמן ו\או בכמות וכיוצב, ולכן סטטוס הקופון במעמד  ההזמנה הוא הקובע");
+				}
+				else
+				{
+					alert("מצטערים ומתנצלים, קוד הקופון שהוזן אינו תקין, או שאזל, או שאינו בתוקף, או שאין לכם זכאות להשתמש בו. הזמינו כעת ותקבלו מוצרים איכותיים ובריאים, זו המתנה האמיתית! הרשמו גם לקבלת הודעות מאיתנו ואולי תופתעו לטובה.");
+					console.log("מצטערים ומתנצלים, קוד הקופון שהוזן אינו תקין, או שאזל, או שאינו בתוקף, או שאין לכם זכאות להשתמש בו. הזמינו כעת ותקבלו מוצרים איכותיים ובריאים, זו המתנה האמיתית! הרשמו גם לקבלת הודעות מאיתנו ואולי תופתעו לטובה.");
+					
+					g_discount = 0;
+				}
+			} 
+			else 
+			{
+				g_discount = 0;
+				alert("בדיקת הקופון נכשלה, יש לוודא כי קוד האימות וקוד הקופון נכונים ולנסות שנית ");
+				console.log("בדיקת הקופון נכשלה, יש לוודא כי קוד האימות וקוד הקופון נכונים ולנסות שנית ");
+			}
+			
+			show_cart();
+		}
+		catch(error)
+		{
+		  console.log("ERROR: on_click_apply_coupon() catch error:" + error);
+		}
+	}
+
+
+	function set_initial_field_states()
+	{
+		try
+		{
+			document.getElementById('g_terms_checkbox_group').style.backgroundColor = 'yellow';
+
+			document.getElementById('g_phone_input').disabled = true;
+			document.getElementById('g_send_verification_code_button').disabled = true;
+			document.getElementById('g_verification_code').disabled = true;
+			document.getElementById('g_coupon_code_input').disabled = true;
+			document.getElementById('g_apply_coupon_button').disabled = true;
+		}
+		catch(error)
+		{
+		  console.log("ERROR: set_initial_field_states() catch error:" + error);
+		}
+	}
+
+
+	function on_terms_checkbox_change()
+	{
+		try
+		{
+			const is_checked = document.getElementById('g_terms_checkbox').checked;
+
+			if(is_checked)
+			{
+				document.getElementById('g_terms_checkbox_group').style.backgroundColor = 'white';
+				document.getElementById('g_phone_input').disabled = false;
+				document.getElementById('g_send_verification_code_button').disabled = false;
+				document.getElementById('g_verification_code').disabled = false;
+			}
+			else
+			{
+				document.getElementById('g_terms_checkbox_group').style.backgroundColor = 'yellow';
+				document.getElementById('g_phone_input').disabled = true;
+				document.getElementById('g_send_verification_code_button').disabled = true;
+				document.getElementById('g_verification_code').disabled = true;
+			}
+		}
+		catch(error)
+		{
+		  console.log("ERROR: on_terms_checkbox_change() catch error:" + error);
+		}
+	}
+
+
+	function on_verification_code_input()
+	{
+		try
+		{
+			const has_value = document.getElementById('g_verification_code').value.trim().length > 0;
+
+			document.getElementById('g_coupon_code_input').disabled = !has_value;
+			document.getElementById('g_apply_coupon_button').disabled = !has_value;
+		}
+		catch(error)
+		{
+		  console.log("ERROR: on_verification_code_input() catch error:" + error);
 		}
 	}
 
@@ -933,191 +1280,6 @@
 			margin-top: 20px;
 		}
 
-		/* PRODUCTS / CATEGORIES - all products (or all categories) live inside one big
-		   merged card ("מתחם"). Products: one per row, image on the right side, all
-		   other details stacked to the left of the image. Categories: two per row. */
-
-		#g_products_div
-		{
-			background: white;
-			border-radius: 12px;
-			padding: 10px;
-			box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-			display: flex;
-			flex-wrap: wrap;
-			gap: 8px;
-		}
-
-		.product-card
-		{
-			width: 100%;
-			border: 1px solid #ddd;
-			border-radius: 10px;
-			padding: 8px;
-			display: flex;
-			flex-direction: column;
-			gap: 4px;
-		}
-
-		.product-title
-		{
-			font-size: 15px;
-			font-weight: bold;
-		}
-
-		.product-description
-		{
-			font-size: 12px;
-			color: #666;
-		}
-
-		/* bottom row of the card - image on one side (right, due to RTL + row order),
-		   details column on the other side (left). The card's height is driven by the image's height. */
-
-		.product-bottom-row
-		{
-			display: flex;
-			align-items: center;
-			gap: 10px;
-			margin-top: 4px;
-		}
-
-		.product-image
-		{
-			width: 100px;
-			height: 100px;
-			object-fit: cover;
-			border-radius: 8px;
-			flex-shrink: 0;
-		}
-
-		/* column holding title, description and price/qty/total, placed to the
-		   left of the image (in RTL, the element that appears second in the row
-		   markup is rendered on the left side) */
-
-		.product-details-col
-		{
-			display: flex;
-			flex-direction: column;
-			gap: 4px;
-			flex: 1;
-			min-width: 0;
-		}
-
-		/* price above the quantity box, total below it, all stacked and centered,
-		   filling the remaining space next to the image */
-
-		.price-qty-total
-		{
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			gap: 4px;
-			flex: 1;
-			min-width: 0;
-		}
-
-		.price
-		{
-			font-size: 14px;
-			font-weight: bold;
-			color: #1d7c45;
-			white-space: nowrap;
-		}
-
-		.quantity-box
-		{
-			display: flex;
-			align-items: center;
-			gap: 5px;
-		}
-
-		.quantity-box button
-		{
-			width: 28px;
-			height: 28px;
-			border: none;
-			border-radius: 7px;
-			background: #1d7c45;
-			color: white;
-			font-size: 18px;
-			cursor: pointer;
-			line-height: 1;
-		}
-
-		.quantity-box input
-		{
-			width: 44px;
-			height: 28px;
-			text-align: center;
-			font-size: 14px;
-			border: 1px solid #ccc;
-			border-radius: 7px;
-			padding: 0;
-		}
-
-		.total
-		{
-			font-size: 13px;
-			font-weight: bold;
-			white-space: nowrap;
-		}
-
-		/* CATEGORIES - two cards per row, title text above the category image */
-
-		.category-card
-		{
-			width: calc(50% - 4px);
-			border: 1px solid #ddd;
-			border-radius: 10px;
-			padding: 10px;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			gap: 8px;
-			cursor: pointer;
-			text-align: center;
-			user-select: none;
-		}
-
-		.category-title
-		{
-			font-size: 15px;
-			font-weight: bold;
-		}
-
-		.category-image
-		{
-			width: 100%;
-			aspect-ratio: 1 / 1;
-			object-fit: cover;
-			border-radius: 8px;
-		}
-
-		/* "back to categories" link shown above the product list when a category is open */
-
-		.back-to-categories
-		{
-			width: 100%;
-			padding: 8px 14px;
-			background: #eaf6ef;
-			color: #1d7c45;
-			border-radius: 10px;
-			font-size: 14px;
-			font-weight: bold;
-			cursor: pointer;
-			user-select: none;
-			text-align: center;
-		}
-
-		/* SHOPPING CART - middle "מתחם" between the products section and the
-		   rest of the form. Table format: image, product name, qty, unit price, total,
-		   followed by a summary row.
-		   CHANGED: added margin-bottom equal to margin-top, so the gap below this
-		   מתחם (before the bottom form) matches the gap above it (after the products
-		   section). Without it, the next .container had no margin-top of its own,
-		   so there was no visible spacing between the cart and the form below it. */
 
 		#g_cart_div
 		{
@@ -1195,7 +1357,6 @@
 			margin-bottom: 18px;
 		}
 
-		/* row layout for placing two form-groups side by side */
 		.form-row
 		{
 			display: flex;
@@ -1315,8 +1476,6 @@
 			line-height: 1.7;
 		}
 
-		/* separators between the logical sections of the form, and a row layout for the coupon input+button */
-
 		.section-divider
 		{
 			border: none;
@@ -1348,7 +1507,6 @@
 			cursor: pointer;
 		}
 
-		/* nicer styling for the discount badge */
 		.discount-badge
 		{
 			display: inline-block;
@@ -1359,9 +1517,6 @@
 			border-radius: 20px;
 			font-size: 14px;
 		}
-
-		/* phone number box - same size as the coupon input box (10ch),
-		   and verification code box (8 chars), placed side by side with the "send code" button */
 
 		.phone-input
 		{
@@ -1376,8 +1531,6 @@
 			flex: none;
 			padding: 10px 8px;
 		}
-
-		/* shortened coupon input box, and a read-only "discount" box placed to its left, next to the "החל קופון" button */
 
 		.coupon-input
 		{
@@ -1398,13 +1551,11 @@
 			cursor: default;
 		}
 
-		/* two side-by-side clickable "button-cards" for choosing the delivery method (no radio inputs) */
-
 		.delivery-method-options
 		{
 			display: flex;
 			gap: 10px;
-			background-color: yellow;
+			//background-color: yellow;
 			padding: 8px;
 			border-radius: 14px;
 		}
@@ -1433,6 +1584,162 @@
 			color: #1d7c45;
 		}
 
+
+		/* PRODUCT CARD */
+
+		.product-card
+		{
+			border: 1px solid #ddd;
+			border-radius: 12px;
+			background: white;
+			padding: 10px;
+			margin-bottom: 12px;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+
+		.product-card-image
+		{
+			width: 100px;
+			height: 100px;
+			object-fit: cover;
+			border-radius: 8px;
+			flex-shrink: 0;
+		}
+
+		.product-card-info
+		{
+			flex: 1;
+		}
+
+		.product-card-name
+		{
+			font-weight: bold;
+			font-size: 16px;
+			margin-bottom: 4px;
+		}
+
+		.product-card-subtitle
+		{
+			font-size: 13px;
+			color: #666;
+			margin-bottom: 8px;
+		}
+
+		.product-card-price-row
+		{
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 6px;
+		}
+
+		.product-card-price
+		{
+			font-weight: bold;
+			font-size: 15px;
+		}
+
+		.qty-control
+		{
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.qty-btn
+		{
+			width: 28px;
+			height: 28px;
+			border: none;
+			border-radius: 8px;
+			background: #1d7c45;
+			color: white;
+			font-size: 16px;
+			font-weight: bold;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 0;
+		}
+
+		.qty-input
+		{
+			width: 40px;
+			padding: 4px;
+			text-align: center;
+			border-radius: 8px;
+		}
+
+		.product-card-total
+		{
+			font-size: 13px;
+			color: #1d7c45;
+			font-weight: bold;
+		}
+
+
+		/* CATEGORIES */
+
+		#g_categories_div
+		{
+			display: grid;
+			grid-template-columns: repeat(5, 1fr);
+			gap: 6px;
+			margin-top: 15px;
+		}
+
+		.category-item
+		{
+			border: 1px solid #ddd;
+			border-radius: 12px;
+			background: white;
+			padding: 6px 2px;
+			width: auto;
+			text-align: center;
+			cursor: pointer;
+			user-select: none;
+		}
+
+		.category-item-image
+		{
+			width: 100%;
+			max-width: 55px;
+			height: 55px;
+			object-fit: cover;
+			border-radius: 8px;
+			margin-bottom: 4px;
+		}
+
+		.category-item-name
+		{
+			font-size: 12px;
+			font-weight: bold;
+			line-height: 1.2;
+		}
+
+		/* DISABLED FIELDS - visual cue that these are intentionally locked */
+
+		input:disabled,
+		select:disabled,
+		textarea:disabled
+		{
+			background: #eee;
+			color: #999;
+			border: 1px dashed #bbb;
+			cursor: not-allowed;
+		}
+
+		button:disabled
+		{
+			background: #bbb;
+			color: #eee;
+			cursor: not-allowed;
+			opacity: 0.7;
+		}
+
 	</style>
 	
 </head>
@@ -1448,12 +1755,17 @@
 	<div class="container">
 		<img src="https://beensman.github.io/rnt-dev/logo_medium.png" alt="לוגו רומיה ותמר" class="logo"> <!-- https://i.ibb.co/2L4HRRz/logo-medium.png -->
 		<div class="welcome-text">ברוכים הבאים לחנות של רומיה ותמר</div>
-		<div class="welcome-link"><a href="https://www.rumyah-and-tamar.com/">מוצרים שלא קיימים במלאי לא מוצגים כאן, לצפיה בכל המוצרים שלנו לחצו כאן</a></div>
+		<div class="welcome-link"><a href="https://www.rumyah-and-tamar.com/">הצטרפו כנקודת איסוף עצמי וקבלו כסף ומוצרים בחינם! לחצו כאן לפרטים!</a></div>
 	</div>
 
 	<!-- PRODUCTS / CATEGORIES (מתחם עליון) -->
-	<div class="container" id="g_products_div">
-
+	<div class="container" id="g_category_div"> <!-- category contain products and sub categories -->
+		<div id="g_products_div">
+	
+		</div>
+		<div id="g_categories_div">
+			
+		</div>
 	</div>
 
 	<!-- SHOPPING CART (מתחם אמצעי) -->
@@ -1464,13 +1776,15 @@
 					<th>תמונה</th>
 					<th>שם המוצר</th>
 					<th>כמות</th>
-					<th>מחיר ליחידה</th>
+					<th>מחיר</th>
 					<th>סה"כ</th>
 				</tr>
 			</thead>
 			<tbody id="g_cart_tbody">
 				<tr><td colspan="5" class="cart-empty-row">העגלה ריקה</td></tr>
 			</tbody>
+		</table>
+		<table class="cart-table" id="g_minimum_notice">
 		</table>
 	</div>
 
@@ -1481,16 +1795,16 @@
 
 			<!-- ==== SECTION 1: terms, phone verification, coupon ==== -->
 
-			<div class="checkbox-group">
-				<input type="checkbox" id="g_terms_checkbox"><label for="g_terms_checkbox">קראתי ואני מסכים ומקבל את התקנון ותנאי השימוש באתר.</label>
+			<div class="checkbox-group" id="g_terms_checkbox_group">
+				<input type="checkbox" id="g_terms_checkbox" onchange="on_terms_checkbox_change();"><label for="g_terms_checkbox">קראתי ואני מסכים ומקבל את התקנון ותנאי השימוש באתר.</label>
 			</div>
 
 			<div class="form-group">
 				<label>מספר טלפון ישראלי</label>
 				<div class="input-with-button">
 					<input type="text" id="g_phone_input" class="phone-input">
-					<button onclick="on_click_send_verification_code();">שלחו לי קוד</button>
-					<input type="text" id="g_verification_code" class="verification-input" placeholder="קוד אימות">
+					<button id="g_send_verification_code_button" onclick="on_click_send_verification_code();">שלחו לי קוד</button>
+					<input type="text" id="g_verification_code" class="verification-input" placeholder="קוד אימות" oninput="on_verification_code_input();">
 				</div>
 			</div>
 			
@@ -1505,8 +1819,8 @@
 				<label>קוד קופון</label>
 				<div class="input-with-button">
 					<input type="text" id="g_coupon_code_input" class="coupon-input">
-					<button onclick="on_apply_coupon_click();">החל קופון</button>
-					<input type="text" id="g_discount_text" class="discount-input" placeholder="הנחה" value="0 ש&quot;ח" readonly>
+					<button id="g_apply_coupon_button" onclick="on_click_apply_coupon();">החל קופון</button>
+					<input type="text" id="g_discount_text" class="discount-input" value="" readonly>
 				</div>
 			</div>
 
@@ -1521,8 +1835,9 @@
 
 			<div class="form-group">
 				<div class="delivery-method-options" id="g_delivery_method_options">
-					<div class="delivery-method-option" data-value="pickup" onclick="onDeliveryMethodChanged(this);">איסוף עצמי ליד הבית (0 ש"ח)</div>
-					<div class="delivery-method-option" data-value="home_delivery" onclick="onDeliveryMethodChanged(this);">משלוח עד הבית (30 ש"ח)</div>
+					<!-- <div class="delivery-method-option" data-value="pickup" onclick="onDeliveryMethodChanged(this);">איסוף עצמי ליד הבית (0 ש"ח)</div> -->
+					<div class="delivery-method-option" data-value="pickup" id="g_pickup_tab" onclick="on_change_delivery_type('pickup');">איסוף עצמי ליד הבית <br>מינימום הזמנה </div>
+					<div class="delivery-method-option" data-value="home_delivery" id="g_to_home_tab" onclick="on_change_delivery_type('to_home');">משלוח עד הבית <br>מינימום הזמנה</div>
 				</div>
 			</div>
 
@@ -1535,7 +1850,7 @@
 				<div class="form-group">
 					<label>בחרו נקודה לאיסוף עצמי <span class="label-note">(לאחר ביצוע ההזמנה נשלח אליכם פרטים מלאים)</span></label>
 
-					<select id="g_pickup_points_select" onchange="onPickupPointChanged(this);" style="background-color: yellow;">
+					<select id="g_pickup_points_select" onchange="on_pickup_point_changed();" style="background-color: yellow;">
 						</option>
 					</select>
 				</div>
@@ -1553,7 +1868,7 @@
 				<div class="form-row">
 					<div class="form-group">
 						<label>עיר</label>
-						<select id="g_city_select" style="background-color: yellow;">
+						<select id="g_city_select" onchange="on_city_changed();" style="background-color: yellow;">
 							<option value="not_selected">יש לבחור עיר</option>
 						</select>
 					</div>
