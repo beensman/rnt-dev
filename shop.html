@@ -24,7 +24,7 @@
 	 
 	var g_files_server_base_url = "https://beensman.github.io/rnt-dev/";
  
-	var g_work_mode = "dev"; // "dev"  or  "production"
+	// to delete >>> var g_work_mode = "dev"; // "dev"  or  "production"
 	var g_server_url = "";
 	
 	var g_configuration_data_from_server = "";
@@ -472,8 +472,8 @@
 				const product_code         = product.product_code;
 				const product_name         = product.product_name;
 				const product_price        = parseFloat(product.product_price_including_vat);
-				const thumbnail_image_file = product.thumbnail_image_file;
-
+				const thumbnail_image_file = g_files_server_base_url + "img/products/" + product_code + "_thumbnail.png";
+				
 				const qty        = order_item.amount;
 				const line_total_str = (product_price * qty).toFixed(0);
 
@@ -784,7 +784,7 @@
 			{
 				alert("בשל בעיות תקשורת לא הצלחנו לקבל מהשרת נתונים חיוניים, לחץ על אישור לנסות שנית");
 				hideOverlay();
-				//location.reload();
+				location.reload();
 			}
 			
 			show_category();
@@ -797,18 +797,33 @@
 			
 			fill_coupon_code_from_url();
 			
-			if(g_work_mode === "production")
-			{
-				// set timer to reload the page after 6 hours - in case the user left the web site open for a long time, we need to make sure he get the updated prices and stocks
-				setTimeout(on_page_load, 21600000); // 6*60*60*1000=21600000
-			}
+			// set timer to reload the page after 6 hours - in case the user left the web site open for a long time, we need to make sure he get the updated prices and stocks
+			setTimeout(on_inactivity, 21600000); // 6*60*60*1000=21600000
 		}
 		catch(error)
 		{
 			console.log("ERROR: on_page_load() catch error:" + error);
 			alert("בשל בעיות תקשורת לא הצלחנו לקבל מהשרת נתונים חיוניים, לחץ על אישור לנסות שנית");
 			hideOverlay();
-			//location.reload();
+			location.reload();
+		}
+	}
+	
+	
+	async function on_inactivity()
+	{
+		try
+		{
+			console.log("on_inactivity() - start");
+			
+			alert("המערכת זיהתה כי עבר זמן רב מאז עדכון המלאי האחרון, לחץ אישור לרענון העמוד");
+			
+			location.reload();
+		}
+		catch(error)
+		{
+			console.log("ERROR: on_inactivity() catch error:" + error);
+			location.reload();
 		}
 	}
 
@@ -949,7 +964,7 @@
 			
 			showOverlay("השרת מטפל בהזמנתך"); 
 
-			const result = await post_to_server_with_busy_retry({ action: "create_new_order", order: g_order },	"השרת עמוס, מנסה שוב, אנא המתינו...");
+			const result = await post_to_server_with_busy_retry({ action: "create_new_order", order: g_order });
 			
 			console.log("on_main_button_click() - result = " + JSON.stringify(result));
 			
@@ -1043,10 +1058,7 @@
 			
 			const targetPhone = document.getElementById('g_phone_input').value;
 			
-			const result = await post_to_server_with_busy_retry(
-				{ action: "send_verification_code_sms", recipient: targetPhone },
-				"השרת עמוס, מנסה שוב, אנא המתינו..."
-			);
+			const result = await post_to_server_with_busy_retry({ action: "send_verification_code_sms", recipient: targetPhone });
 			
 			hideOverlay();
 
@@ -1086,10 +1098,7 @@
 			
 			const verification_code_input = document.getElementById('g_verification_code').value; 
 			
-			const result = await post_to_server_with_busy_retry(
-				{ action: "is_a_valid_coupon", coupon_code: coupon_code_input, customer_phone_number: targetPhone, verification_code: verification_code_input },
-				"השרת עמוס, מנסה שוב, אנא המתינו..."
-			);
+			const result = await post_to_server_with_busy_retry({ action: "is_a_valid_coupon", coupon_code: coupon_code_input, customer_phone_number: targetPhone, verification_code: verification_code_input });
 			
 			//example response: {"result":"ok","validity_results":{"is_valid":0,"is_a_new_customer":0,"discount":0,"discount_type_money_or_percentage":""}}
 			
@@ -1557,7 +1566,7 @@
 		{
 			display: flex;
 			gap: 10px;
-			//background-color: yellow;
+			/*background-color: yellow;*/
 			padding: 8px;
 			border-radius: 14px;
 		}
@@ -1578,13 +1587,14 @@
 			user-select: none;
 		}
 
+		/*
 		.delivery-method-option.selected
 		{
 			border-color: #1d7c45;
 			background: #eaf6ef;
 			font-weight: bold;
 			color: #1d7c45;
-		}
+		}*/
 
 
 		/* PRODUCT CARD */
@@ -1856,7 +1866,7 @@
 					<label>בחרו נקודה לאיסוף עצמי <span class="label-note">(לאחר ביצוע ההזמנה נשלח אליכם פרטים מלאים)</span></label>
 
 					<select id="g_pickup_points_select" onchange="on_pickup_point_changed();" style="background-color: yellow;">
-						</option>
+						<option></option>
 					</select>
 				</div>
 
